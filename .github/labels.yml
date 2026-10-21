@@ -105,6 +105,26 @@
   color: "17a2b8"
   description: "PostgreSQL pgvector extension, HNSW indexes, and embedding persistence"
 
+- name: "component:infra"
+  color: "fbca04"
+  description: "Docker Compose, Kubernetes Helm, and local infra"
+
+- name: "component:documentation"
+  color: "0075ca"
+  description: "Architecture documentation, OpenAPI specs, and PRD"
+
+- name: "component:extensions"
+  color: "6f42c1"
+  description: "VS Code extension and JetBrains plugin"
+
+- name: "component:mapping"
+  color: "8957e5"
+  description: "5-signal issue-to-code mapping ranker"
+
+- name: "type:frontend"
+  color: "388bfd"
+  description: "Frontend visual UI, canvas UX, and React components"
+
 - name: "component:ci-cd"
   color: "6c757d"
   description: "GitHub Actions workflows, Docker image publishing, and automated checks"
