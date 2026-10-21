@@ -1,0 +1,59 @@
+{
+  "name": "codeatlas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-Augmented Monorepo Onboarding Engine — interactive architecture graphs, RAG code intelligence, and 5-signal issue-to-code mapping",
+  "license": "Apache-2.0",
+  "author": "Inkesk-Dozing",
+  "homepage": "https://github.com/Inkesk-Dozing/CodeAtlas#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Inkesk-Dozing/CodeAtlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Inkesk-Dozing/CodeAtlas/issues"
+  },
+  "keywords": [
+    "codebase-visualization",
+    "architecture-graph",
+    "monorepo",
+    "developer-tools",
+    "react-flow",
+    "ast-parser",
+    "tree-sitter",
+    "rag",
+    "llm",
+    "fastapi",
+    "pgvector",
+    "code-search",
+    "issue-mapping",
+    "onboarding",
+    "turborepo",
+    "nextjs",
+    "code-intelligence",
+    "knowledge-graph",
+    "software-architecture",
+    "ollama"
+  ],
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "db:migrate": "pnpm --filter @codeatlas/api db:migrate",
+    "db:revision": "pnpm --filter @codeatlas/api db:revision",
+    "format": "prettier --write \"**/*.{ts,tsx,py,md,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,py,md,json,yml,yaml}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "prettier": "^3.3.0",
+    "prettier-plugin-tailwindcss": "^0.6.0"
+  }
+}

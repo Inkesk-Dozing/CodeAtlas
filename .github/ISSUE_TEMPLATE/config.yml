@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/Inkesk-Dozing/CodeAtlas/discussions
+    about: Ask questions, share ideas, and discuss architecture with the community.
+  - name: 🔒 Security Policy & Disclosures
+    url: https://github.com/Inkesk-Dozing/CodeAtlas/security/policy
+    about: Report sensitive vulnerabilities privately.

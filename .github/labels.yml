@@ -1,0 +1,136 @@
+# GitHub Labels Configuration for CodeAtlas
+# Can be synced via github-label-sync or GitHub Actions
+
+# --- Phases ---
+- name: "phase:phase-0-foundation"
+  color: "0366d6"
+  description: "Phase 0: Core monorepo setup, Docker infrastructure, auth, and database migrations"
+
+- name: "phase:phase-1-ingestion"
+  color: "28a745"
+  description: "Phase 1: Repository cloner, Tree-sitter AST parsers, and pgvector embeddings"
+
+- name: "phase:phase-2-mapping"
+  color: "6f42c1"
+  description: "Phase 2: Interactive React Flow graph UX, hybrid search, and 5-signal issue-to-code mapping"
+
+- name: "phase:phase-3-ai-docs"
+  color: "d73a49"
+  description: "Phase 3: Automated architecture summaries, complexity metrics, living docs, and RAG chat"
+
+- name: "phase:phase-4-saas"
+  color: "f66a0a"
+  description: "Phase 4: Multi-tenancy, Row-Level Security, Stripe billing, admin portal, and E2E tests"
+
+- name: "phase:phase-5-prime"
+  color: "b60205"
+  description: "Phase 5: CodeAtlas Prime unified platform, PR blast radius bot, and boundary linter"
+
+# --- Issue Types ---
+- name: "type:feature"
+  color: "a2eeef"
+  description: "New user-facing functionality or core architectural capability"
+
+- name: "type:bug"
+  color: "d73a4a"
+  description: "Something isn't working as specified or causing runtime exceptions"
+
+- name: "type:security"
+  color: "e11d48"
+  description: "Vulnerability remediation, authentication hardening, or secret scanning"
+
+- name: "type:performance"
+  color: "ffc107"
+  description: "Query optimization, memory leak resolution, or canvas frame rate improvements"
+
+- name: "type:documentation"
+  color: "0075ca"
+  description: "Improvements or additions to technical documentation, OpenAPI specs, or PRD"
+
+- name: "type:refactor"
+  color: "7057ff"
+  description: "Code restructuring, type safety enhancements, or dead code elimination"
+
+- name: "type:test"
+  color: "1d76db"
+  description: "Unit, integration, golden set, or Playwright end-to-end tests"
+
+- name: "type:infra"
+  color: "fbca04"
+  description: "Docker Compose, Kubernetes Helm, CI/CD GitHub Actions, or deployment pipelines"
+
+# --- Priorities ---
+- name: "priority:P0-critical"
+  color: "b60205"
+  description: "P0: Immediate blocker for current milestone or production launch"
+
+- name: "priority:P1-high"
+  color: "d93f0b"
+  description: "P1: Core roadmap feature or high-impact defect"
+
+- name: "priority:P2-medium"
+  color: "e99695"
+  description: "P2: Standard milestone deliverable or moderate enhancement"
+
+- name: "priority:P3-low"
+  color: "fef2c0"
+  description: "P3: Nice-to-have improvement, polish, or minor technical debt"
+
+# --- Components ---
+- name: "component:apps/api"
+  color: "1f6feb"
+  description: "FastAPI gateway, routers, middleware, and database access layer"
+
+- name: "component:apps/web"
+  color: "388bfd"
+  description: "Next.js frontend, React Flow canvas, Zustand stores, and UI components"
+
+- name: "component:packages/shared"
+  color: "58a6ff"
+  description: "Shared TypeScript domain contracts, types, and constants"
+
+- name: "component:ingestion-engine"
+  color: "238636"
+  description: "Repository cloner, Tree-sitter AST parsers, and node extraction"
+
+- name: "component:mapping-engine"
+  color: "8957e5"
+  description: "5-signal issue-to-code ranker, semantic cosine scoring, and graph propagation"
+
+- name: "component:ai-rag"
+  color: "a371f7"
+  description: "Ollama LLM integration, prompt templates, RAG chat, and summaries"
+
+- name: "component:vector-db"
+  color: "17a2b8"
+  description: "PostgreSQL pgvector extension, HNSW indexes, and embedding persistence"
+
+- name: "component:ci-cd"
+  color: "6c757d"
+  description: "GitHub Actions workflows, Docker image publishing, and automated checks"
+
+# --- Status / Workflow ---
+- name: "status:completed"
+  color: "0e8a16"
+  description: "Implemented, tested, and verified in active codebase"
+
+- name: "status:ready"
+  color: "2cbe4e"
+  description: "Fully specified and ready for implementation"
+
+- name: "status:in-progress"
+  color: "e36209"
+  description: "Currently under active development"
+
+- name: "status:blocked"
+  color: "b60205"
+  description: "Blocked by an upstream dependency or design decision"
+
+# --- Community & Help ---
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers with well-isolated scope and clear instructions"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention or community contribution is welcome"

@@ -1,0 +1,19 @@
+# Root-context builds (web image). The API image builds with apps/api as context.
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/coverage
+**/__pycache__
+**/*.pyc
+.git
+.env
+.env.*
+*.md
+.venv
+venv
+.ruff_cache
+.pytest_cache
+.mypy_cache
+apps/api/coverage.xml

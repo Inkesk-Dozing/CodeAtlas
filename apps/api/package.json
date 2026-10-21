@@ -1,0 +1,15 @@
+{
+  "name": "@codeatlas/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CodeAtlas FastAPI backend",
+  "scripts": {
+    "dev": "python -m uvicorn main:app --reload --port 8000",
+    "lint": "ruff check .",
+    "typecheck": "python -m compileall -q .",
+    "test": "python -m pytest tests/ -q",
+    "db:migrate": "alembic upgrade head",
+    "db:revision": "alembic revision --autogenerate",
+    "db:downgrade": "alembic downgrade -1"
+  }
+}
