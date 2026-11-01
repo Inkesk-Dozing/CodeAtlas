@@ -81,10 +81,10 @@ class RustParser(BaseParser):
         result.imports = self._extract_imports(content, lines)
         result.classes = self._extract_structs_and_enums(content, lines)
         result.interfaces = self._extract_traits(content, lines)
-        
+
         # Extract impl blocks to map methods and trait implementations
         impl_traits, impl_methods = self._extract_impl_blocks(content)
-        
+
         # Link implemented traits to structs in metadata
         self._link_traits_to_structs(result.classes, impl_traits)
 
@@ -107,7 +107,6 @@ class RustParser(BaseParser):
 
         # Mod declarations
         for match in MOD_PATTERN.finditer(content):
-            pub_decl = match.group(1) or ""
             mod_name = match.group(2)
             line_no = content[: match.start()].count("\n") + 1
             imports.append(
@@ -121,7 +120,6 @@ class RustParser(BaseParser):
 
         # Use declarations: use std::collections::HashMap; use crate::foo::{Bar, Baz};
         for match in USE_PATTERN.finditer(content):
-            pub_decl = match.group(1) or ""
             raw_use = match.group(2).strip()
             line_no = content[: match.start()].count("\n") + 1
 
@@ -359,9 +357,8 @@ class RustParser(BaseParser):
     def _link_traits_to_structs(self, structs: list[ParsedSymbol], impl_traits: list[dict]):
         for item in impl_traits:
             for s in structs:
-                if s.name == item["struct"]:
-                    if item["trait"] not in s.metadata["implements"]:
-                        s.metadata["implements"].append(item["trait"])
+                if s.name == item["struct"] and item["trait"] not in s.metadata["implements"]:
+                    s.metadata["implements"].append(item["trait"])
 
     def _extract_routes(self, content: str, lines: list[str]) -> list[ParsedRoute]:
         routes: list[ParsedRoute] = []

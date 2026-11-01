@@ -1,8 +1,5 @@
-import pytest
 from services.ingestion.workspace_detector import (
     WorkspaceBoundaryDetector,
-    WorkspaceAnalysisResult,
-    CircularDependencyCycle,
 )
 
 
@@ -89,3 +86,4 @@ class TestWorkspaceBoundaryDetector:
         assert len(cycles) == 1
         assert cycles[0].length == 1
         assert "Self-referential" in cycles[0].description
+
