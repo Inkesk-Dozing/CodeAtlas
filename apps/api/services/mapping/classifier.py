@@ -18,13 +18,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from services.mapping.preprocessor import PreprocessedIssue
 
 
-class IssueIntent(str, Enum):
+class IssueIntent(StrEnum):
     BUG = "BUG"
     FEATURE = "FEATURE"
     REFACTOR = "REFACTOR"
