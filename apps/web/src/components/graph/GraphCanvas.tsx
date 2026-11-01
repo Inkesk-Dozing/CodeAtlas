@@ -5,7 +5,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MarkerType,
   MiniMap,
   ReactFlow,
   useEdgesState,
@@ -19,14 +18,19 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseNode } from './nodes/BaseNode';
+import { ClusterNode } from './nodes/ClusterNode';
 import { FlowEdge } from './edges/BaseEdge';
-import { useGraphStore, getVisibleNodes, getVisibleEdges } from '@/stores/graphStore';
+import { useGraphStore, getVisibleNodes } from '@/stores/graphStore';
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
 import { NODE_TYPE_COLORS } from '@codeatlas/shared';
 import { calculateVisibleNodeIds, shouldThrottleEdges } from '@/lib/graph/virtualization';
+import { layoutClusteredGraph } from '@/lib/graph/clustering';
 
-const nodeTypes = { base: BaseNode };
+const nodeTypes = {
+  base: BaseNode,
+  cluster: ClusterNode,
+};
 const edgeTypes = { base: FlowEdge };
 
 interface ViewportInterceptorProps {
@@ -40,82 +44,12 @@ function ViewportInterceptor({ onViewportChange }: ViewportInterceptorProps) {
   return null;
 }
 
-function layoutNodes(rawNodes: GraphNode[], rawEdges: GraphEdge[]): { nodes: Node[]; edges: Edge[] } {
-  const posMap = new Map<string, { x: number; y: number }>();
-  const adj = new Map<string, string[]>();
-  const inDeg = new Map<string, number>();
-
-  for (const n of rawNodes) {
-    inDeg.set(n.id, 0);
-    adj.set(n.id, []);
-  }
-
-  for (const e of rawEdges) {
-    if (adj.has(e.source_id) && inDeg.has(e.target_id)) {
-      adj.get(e.source_id)!.push(e.target_id);
-      inDeg.set(e.target_id, (inDeg.get(e.target_id) || 0) + 1);
-    }
-  }
-
-  // BFS layer assignment
-  const layer = new Map<string, number>();
-  const queue: string[] = [];
-  for (const [id, deg] of inDeg) {
-    if (deg === 0) {
-      layer.set(id, 0);
-      queue.push(id);
-    }
-  }
-
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const currentLayer = layer.get(current) || 0;
-    for (const neighbor of adj.get(current) || []) {
-      if (!layer.has(neighbor)) {
-        layer.set(neighbor, currentLayer + 1);
-        queue.push(neighbor);
-      }
-    }
-  }
-
-  // Assign positions: layer = x, index within layer = y
-  const layers = new Map<number, string[]>();
-  for (const n of rawNodes) {
-    const l = layer.get(n.id) ?? 0;
-    if (!layers.has(l)) layers.set(l, []);
-    layers.get(l)!.push(n.id);
-  }
-
-  for (const [l, ids] of layers) {
-    ids.forEach((id, idx) => {
-      posMap.set(id, { x: l * 320, y: idx * 120 - (ids.length * 60) });
-    });
-  }
-
-  const nodes: Node[] = rawNodes.map((n) => {
-    const pos = posMap.get(n.id) || { x: 0, y: 0 };
-    return {
-      id: n.id,
-      type: 'base',
-      position: pos,
-      data: {
-        node: n,
-        isSelected: false,
-        isHighlighted: false,
-      },
-    };
-  });
-
-  const edges: Edge[] = rawEdges.map((e) => ({
-    id: e.id,
-    source: e.source_id,
-    target: e.target_id,
-    type: 'base',
-    data: { edgeType: e.type },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#9CA3AF' },
-  }));
-
-  return { nodes, edges };
+function layoutNodes(
+  rawNodes: GraphNode[],
+  rawEdges: GraphEdge[],
+  collapsedClusters: Set<string>,
+): { nodes: Node[]; edges: Edge[] } {
+  return layoutClusteredGraph(rawNodes, rawEdges, collapsedClusters, 4);
 }
 
 interface GraphCanvasProps {
@@ -131,19 +65,28 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   const stage = useGraphStore((s) => s.stage);
   const progress = useGraphStore((s) => s.progress);
 
+  const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
+
+  const toggleCluster = useCallback((clusterId: string) => {
+    setCollapsedClusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(clusterId)) {
+        next.delete(clusterId);
+      } else {
+        next.add(clusterId);
+      }
+      return next;
+    });
+  }, []);
+
   const visibleNodes = useMemo(
     () => getVisibleNodes({ rawNodes, filterTypes, searchQuery }),
     [rawNodes, filterTypes, searchQuery],
   );
 
-  const visibleEdges = useMemo(
-    () => getVisibleEdges({ rawEdges, visibleNodes }),
-    [rawEdges, visibleNodes],
-  );
-
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => layoutNodes(visibleNodes, visibleEdges),
-    [visibleNodes, visibleEdges],
+    () => layoutNodes(visibleNodes, rawEdges, collapsedClusters),
+    [visibleNodes, rawEdges, collapsedClusters],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
@@ -244,6 +187,16 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   const displayNodes = useMemo(
     () =>
       nodes.map((n) => {
+        if (n.type === 'cluster') {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              onToggleCollapse: toggleCluster,
+            },
+          };
+        }
+
         const isSelected = n.id === selectedId;
         const isHighlighted = highlighted.has(n.id);
         // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted
@@ -263,7 +216,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
           },
         };
       }),
-    [nodes, selectedId, highlighted, activeVisibleNodeIds],
+    [nodes, selectedId, highlighted, activeVisibleNodeIds, toggleCluster],
   );
 
   const displayEdges = useMemo(

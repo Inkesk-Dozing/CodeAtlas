@@ -32,6 +32,8 @@ function BaseEdge({
 }: EdgeProps) {
   const edgeType = (data?.edgeType as string | undefined) || 'imports';
   const isThrottled = Boolean(data?.isThrottled);
+  const isAggregated = Boolean(data?.isAggregated);
+  const count = typeof data?.count === 'number' ? data.count : 1;
   const edgeStyle = EDGE_STYLES[edgeType] || EDGE_STYLES.imports;
 
   // When throttled at zoom < 0.3, render a fast straight line without bezier calculations or label DOM
@@ -44,8 +46,8 @@ function BaseEdge({
         x2={targetX}
         y2={targetY}
         stroke={edgeStyle.color}
-        strokeWidth={1}
-        opacity={0.4}
+        strokeWidth={isAggregated ? 2.5 : 1}
+        opacity={0.5}
         style={style}
       />
     );
@@ -67,7 +69,7 @@ function BaseEdge({
         id={id}
         d={path}
         stroke={edgeStyle.color}
-        strokeWidth={edgeStyle.width}
+        strokeWidth={isAggregated ? Math.min(edgeStyle.width + 1.5, 4) : edgeStyle.width}
         strokeDasharray={edgeStyle.dash !== 'none' ? edgeStyle.dash : undefined}
         markerEnd={markerEnd}
         className={edgeStyle.animated ? 'animate-pulse' : ''}
@@ -80,10 +82,15 @@ function BaseEdge({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
           }}
-          className="nodrag nopan opacity-0 transition-opacity hover:opacity-100"
+          className={`nodrag nopan transition-opacity ${
+            isAggregated ? 'opacity-90 hover:opacity-100' : 'opacity-0 hover:opacity-100'
+          }`}
         >
           <div className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
             {edgeType.replace(/_/g, ' ')}
+            {isAggregated && (
+              <span className="ml-1 font-bold text-primary">({count})</span>
+            )}
           </div>
         </div>
       </EdgeLabelRenderer>
