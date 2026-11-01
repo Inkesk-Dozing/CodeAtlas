@@ -24,8 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from models import CodeEdge, CodeNode, Issue, MappingFeedback
 from services.mapping.classifier import IssueIntentClassifier
-from services.mapping.preprocessor import IssueTextPreprocessor
+from services.mapping.preprocessor import IssueTextPreprocessor, PreprocessedIssue
 from services.mapping.semantic import SemanticRetriever
+from services.mapping.structural import StructuralMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class IssueMapper:
             query_tokens.extend(preprocessed.weighted_tokens)
         query_ident_tokens = {sub for t in query_tokens for sub in split_ident(t)}
 
-        lexical_hits = await self._lexical_signal(query_tokens, query_ident_tokens)
+        lexical_hits = await self._lexical_signal(query_tokens, query_ident_tokens, preprocessed)
         semantic_hits = await self._semantic_signal(issue_text)
         historical = await self._historical_signal()
         hotspots = await self._hotspot_signal()
@@ -184,41 +185,17 @@ class IssueMapper:
     # ── signals ──────────────────────────────────────────────────────────
 
     async def _lexical_signal(
-        self, tokens: list[str], ident_tokens: set[str]
+        self,
+        tokens: list[str],
+        ident_tokens: set[str],
+        preprocessed: PreprocessedIssue | None = None,
     ) -> dict[str, float]:
-        if not tokens:
-            return {}
-
-        clause = " OR ".join(
-            f"(name ILIKE :p{i} OR path ILIKE :p{i} OR COALESCE(summary,'') ILIKE :p{i})"
-            for i in range(min(len(tokens), 24))
+        matcher = StructuralMatcher(db=self.db, repo_id=self.repo_id)
+        return await matcher.match_candidates(
+            query_tokens=tokens,
+            query_ident_tokens=ident_tokens,
+            preprocessed=preprocessed,
         )
-        params = {f"p{i}": f"%{t}%" for i, t in enumerate(tokens[:24])}
-        params["repo_id"] = self.repo_id
-
-        sql = text(
-            f"""
-            SELECT id,
-                   similarity(lower(name || ' ' || path || ' ' || COALESCE(summary,'')), :q) AS sim
-            FROM code_nodes
-            WHERE repo_id = :repo_id AND ({clause})
-            ORDER BY sim DESC
-            LIMIT 100
-            """
-        )
-        params["q"] = " ".join(tokens)
-        result = await self.db.execute(sql, params)
-
-        hits: dict[str, float] = {}
-        for row in result.mappings():
-            base = float(row["sim"] or 0.0)
-            node = await self.db.get(CodeNode, str(row["id"]))
-            if node is None:
-                continue
-            name_parts = set(split_ident(node.name)) | set(node.name.lower().replace("_", " ").split())
-            overlap = len(ident_tokens & name_parts) / max(1, len(ident_tokens))
-            hits[node.id] = min(1.0, 0.5 * base + 0.5 * overlap + 0.15 * overlap)
-        return hits
 
     async def _semantic_signal(self, issue_text: str) -> dict[str, float]:
         retriever = SemanticRetriever(db=self.db, repo_id=self.repo_id, limit=50)
