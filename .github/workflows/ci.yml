@@ -78,6 +78,9 @@ jobs:
       - name: Backend tests (with coverage)
         working-directory: apps/api
         run: python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term
+      - name: Mapping accuracy golden set benchmark
+        working-directory: apps/api
+        run: python benchmark_mapping.py --threshold 0.75
       - uses: codecov/codecov-action@v4
         with:
           files: apps/api/coverage.xml
