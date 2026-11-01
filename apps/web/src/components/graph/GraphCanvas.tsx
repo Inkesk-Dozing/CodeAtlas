@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -10,10 +10,12 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useOnViewportChange,
   type Edge,
   type EdgeChange,
   type Node,
   type NodeChange,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { BaseNode } from './nodes/BaseNode';
@@ -22,9 +24,21 @@ import { useGraphStore, getVisibleNodes, getVisibleEdges } from '@/stores/graphS
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
 import { NODE_TYPE_COLORS } from '@codeatlas/shared';
+import { calculateVisibleNodeIds, shouldThrottleEdges } from '@/lib/graph/virtualization';
 
 const nodeTypes = { base: BaseNode };
 const edgeTypes = { base: FlowEdge };
+
+interface ViewportInterceptorProps {
+  onViewportChange: (viewport: Viewport) => void;
+}
+
+function ViewportInterceptor({ onViewportChange }: ViewportInterceptorProps) {
+  useOnViewportChange({
+    onChange: onViewportChange,
+  });
+  return null;
+}
 
 function layoutNodes(rawNodes: GraphNode[], rawEdges: GraphEdge[]): { nodes: Node[]; edges: Edge[] } {
   const posMap = new Map<string, { x: number; y: number }>();
@@ -172,17 +186,96 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   const selectedId = useGraphStore((s) => s.selectedNodeId);
   const highlighted = useGraphStore((s) => s.highlightedNodeIds);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
+
+  // Measure container dimensions for visible viewport bounds
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const { clientWidth, clientHeight } = containerRef.current;
+        setContainerDimensions({ width: clientWidth, height: clientHeight });
+      }
+    };
+
+    updateDimensions();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const handleViewportChange = useCallback((vp: Viewport) => {
+    setViewport(vp);
+  }, []);
+
+  // Compute visible node set based on intercepted viewport bounds
+  const activeVisibleNodeIds = useMemo(() => {
+    if (nodes.length <= 100) {
+      return null; // For small graphs, no virtualization needed
+    }
+
+    return calculateVisibleNodeIds(
+      nodes.map((n) => ({
+        id: n.id,
+        position: n.position,
+        width: 240,
+        height: 72,
+      })),
+      viewport,
+      containerDimensions,
+      {
+        bufferPx: 250,
+        maxActiveNodes: 300,
+        defaultWidth: 240,
+        defaultHeight: 72,
+      },
+    );
+  }, [nodes, viewport, containerDimensions]);
+
+  const isEdgeThrottled = useMemo(() => shouldThrottleEdges(viewport.zoom, 0.3), [viewport.zoom]);
+
   const displayNodes = useMemo(
     () =>
-      nodes.map((n) => ({
-        ...n,
+      nodes.map((n) => {
+        const isSelected = n.id === selectedId;
+        const isHighlighted = highlighted.has(n.id);
+        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted
+        const isVirtualProxy =
+          activeVisibleNodeIds !== null &&
+          !activeVisibleNodeIds.has(n.id) &&
+          !isSelected &&
+          !isHighlighted;
+
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            isSelected,
+            isHighlighted,
+            isVirtualProxy,
+          },
+        };
+      }),
+    [nodes, selectedId, highlighted, activeVisibleNodeIds],
+  );
+
+  const displayEdges = useMemo(
+    () =>
+      edges.map((e) => ({
+        ...e,
         data: {
-          ...n.data,
-          isSelected: n.id === selectedId,
-          isHighlighted: highlighted.has(n.id),
+          ...e.data,
+          isThrottled: isEdgeThrottled,
         },
       })),
-    [nodes, selectedId, highlighted],
+    [edges, isEdgeThrottled],
   );
 
   if (isLoading) {
@@ -220,10 +313,11 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   }
 
   return (
-    <div className="h-full w-full">
+    <div ref={containerRef} className="h-full w-full">
       <ReactFlow
         nodes={displayNodes}
-        edges={edges}
+        edges={displayEdges}
+        onlyRenderVisibleElements
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
@@ -241,6 +335,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
         elementsSelectable
         zoomOnDoubleClick={false}
       >
+        <ViewportInterceptor onViewportChange={handleViewportChange} />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
         <Controls showInteractive={false} />
         <MiniMap

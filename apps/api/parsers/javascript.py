@@ -315,11 +315,12 @@ class JavaScriptParser(BaseParser):
                     if child.type == "call_expression":
                         self._check_route_call(child, framework, content, routes)
 
-            # Recurse for decorators or container blocks
+            # Check Prisma or custom models
+            # Recurse for decorators or top-level blocks
             for child in n.children:
                 if child.type == "decorator":
                     decs.append(child.text.decode("utf-8").strip())
-                else:
+                elif child.type in ("program", "statement_block"):
                     walk(child, is_exported_ctx=is_exported_ctx, decorators_ctx=decs)
 
         walk(node)

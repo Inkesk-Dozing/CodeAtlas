@@ -31,7 +31,25 @@ function BaseEdge({
   style,
 }: EdgeProps) {
   const edgeType = (data?.edgeType as string | undefined) || 'imports';
+  const isThrottled = Boolean(data?.isThrottled);
   const edgeStyle = EDGE_STYLES[edgeType] || EDGE_STYLES.imports;
+
+  // When throttled at zoom < 0.3, render a fast straight line without bezier calculations or label DOM
+  if (isThrottled) {
+    return (
+      <line
+        id={id}
+        x1={sourceX}
+        y1={sourceY}
+        x2={targetX}
+        y2={targetY}
+        stroke={edgeStyle.color}
+        strokeWidth={1}
+        opacity={0.4}
+        style={style}
+      />
+    );
+  }
 
   const [path, labelX, labelY] = getBezierPath({
     sourceX,
