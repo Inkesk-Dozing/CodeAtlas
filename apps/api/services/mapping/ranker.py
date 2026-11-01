@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models import CodeEdge, CodeNode, Issue, MappingFeedback
+from services.mapping.classifier import IssueIntentClassifier
 from services.mapping.preprocessor import IssueTextPreprocessor
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,15 @@ class IssueMapper:
             labels=issue.labels,
         )
 
+        classifier = IssueIntentClassifier()
+        intent_result = classifier.classify(
+            title=issue.title,
+            body=issue.body or "",
+            labels=issue.labels,
+            preprocessed=preprocessed,
+        )
+        active_weights = intent_result.search_strategy.get("weight_adjustments", WEIGHTS)
+
         issue_text = preprocessed.cleaned_text or build_issue_text(issue)
         query_tokens = tokenize(issue_text)
         if preprocessed.weighted_tokens:
@@ -152,7 +162,7 @@ class IssueMapper:
         await self._propagation_signal(combined, query_tokens, query_ident_tokens)
 
         for rn in combined.values():
-            rn.score = sum(rn.signals.get(k, 0.0) * w for k, w in WEIGHTS.items())
+            rn.score = sum(rn.signals.get(k, 0.0) * w for k, w in active_weights.items())
             rn.evidence_keywords = self._matched_keywords(rn, query_tokens)
 
         ranked = sorted(combined.values(), key=lambda r: r.score, reverse=True)
