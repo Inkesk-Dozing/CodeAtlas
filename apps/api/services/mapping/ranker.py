@@ -22,11 +22,12 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
-from models import CodeEdge, CodeNode, Issue, MappingFeedback
+from models import CodeNode, Issue, MappingFeedback
 from services.mapping.classifier import IssueIntentClassifier
 from services.mapping.preprocessor import IssueTextPreprocessor, PreprocessedIssue
 from services.mapping.semantic import SemanticRetriever
 from services.mapping.structural import StructuralMatcher
+from services.mapping.topological import TopologicalPropagator
 
 logger = logging.getLogger(__name__)
 
@@ -254,43 +255,29 @@ class IssueMapper:
         tokens: list[str],
         ident_tokens: set[str],
     ) -> None:
-        seed_ids = [
-            rid
+        seed_scores = {
+            rid: max(rn.signals.get("structural", 0.0), rn.signals.get("semantic", 0.0))
             for rid, rn in combined.items()
-            if rn.signals.get("structural", 0.0) > 0.3 or rn.signals.get("semantic", 0.0) > 0.5
-        ]
-        if not seed_ids:
+            if rn.signals.get("structural", 0.0) >= 0.25 or rn.signals.get("semantic", 0.0) >= 0.35
+        }
+        if not seed_scores:
             return
 
-        edges = await self.db.execute(
-            select(CodeEdge).where(
-                CodeEdge.repo_id == self.repo_id,
-                (CodeEdge.source_id.in_(seed_ids)) | (CodeEdge.target_id.in_(seed_ids)),
-            ).limit(300)
-        )
-        neighbor_ids: set[str] = set()
-        for edge in edges.scalars().all():
-            neighbor_ids.add(edge.target_id)
-            neighbor_ids.add(edge.source_id)
-        neighbor_ids -= set(seed_ids)
-        if not neighbor_ids:
+        propagator = TopologicalPropagator(db=self.db, repo_id=self.repo_id)
+        topo_scores = await propagator.propagate_1hop(seed_scores)
+        if not topo_scores:
             return
 
-        nodes = await self.db.execute(select(CodeNode).where(CodeNode.id.in_(neighbor_ids)))
+        nodes = await self.db.execute(select(CodeNode).where(CodeNode.id.in_(topo_scores.keys())))
         for node in nodes.scalars().all():
             if node.id in combined:
                 rn = combined[node.id]
             else:
                 rn = RankedNode(node=node)
                 combined[node.id] = rn
-            name_parts = set(split_ident(node.name)) | set(node.path.lower().split("/"))
-            token_overlap = len({t for t in tokens if t in node.path.lower()}) / max(
-                1, len(tokens)
-            )
-            ident_overlap = len(ident_tokens & name_parts) / max(1, len(ident_tokens))
-            rn.signals["topological"] = min(1.0, 0.4 * token_overlap + 0.6 * ident_overlap + 0.2)
+            rn.signals["topological"] = topo_scores.get(node.id, 0.0)
             if rn.evidence_patterns is not None:
-                rn.evidence_patterns.append("reachable from top candidate")
+                rn.evidence_patterns.append("reachable from top candidate (1-hop propagated)")
 
     def _matched_keywords(self, rn: RankedNode, tokens: list[str]) -> list[str]:
         haystack = f"{rn.node.name} {rn.node.path} {rn.node.summary or ''}".lower()
