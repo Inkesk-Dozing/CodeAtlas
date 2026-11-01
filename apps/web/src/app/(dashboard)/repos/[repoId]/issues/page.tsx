@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { GitBranch, Loader2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import { api, type CodeMapping } from '@/lib/api/client';
 
@@ -16,12 +17,9 @@ interface Issue {
   url: string | null;
 }
 
-export default function IssuesPage({
-  params,
-}: {
-  params: { repoId: string };
-}) {
-  const repoId = params?.repoId || '';
+export default function IssuesPage() {
+  const routerParams = useParams();
+  const repoId = (typeof routerParams?.repoId === 'string' ? routerParams.repoId : Array.isArray(routerParams?.repoId) ? routerParams.repoId[0] : '') || '';
   const [issues, setIssues] = useState<Issue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
 import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { GraphToolbar } from '@/components/graph/GraphToolbar';
@@ -13,8 +14,9 @@ import { api } from '@/lib/api/client';
 import { useGraphStore } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
 
-export default function GraphPage({ params }: { params: { repoId: string } }) {
-  const repoId = params?.repoId || '';
+export default function GraphPage() {
+  const routerParams = useParams();
+  const repoId = (typeof routerParams?.repoId === 'string' ? routerParams.repoId : Array.isArray(routerParams?.repoId) ? routerParams.repoId[0] : '') || '';
   const [repoName, setRepoName] = useState<string>('');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
