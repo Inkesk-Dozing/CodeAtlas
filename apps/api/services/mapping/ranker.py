@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models import CodeEdge, CodeNode, Issue, MappingFeedback
+from services.mapping.preprocessor import IssueTextPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,17 @@ class IssueMapper:
     async def analyze(self, issue: Issue, limit: int = 25) -> list[dict]:
         start = time.time()
 
-        issue_text = build_issue_text(issue)
+        preprocessor = IssueTextPreprocessor()
+        preprocessed = preprocessor.preprocess(
+            title=issue.title,
+            body=issue.body or "",
+            labels=issue.labels,
+        )
+
+        issue_text = preprocessed.cleaned_text or build_issue_text(issue)
         query_tokens = tokenize(issue_text)
+        if preprocessed.weighted_tokens:
+            query_tokens.extend(preprocessed.weighted_tokens)
         query_ident_tokens = {sub for t in query_tokens for sub in split_ident(t)}
 
         lexical_hits = await self._lexical_signal(query_tokens, query_ident_tokens)
