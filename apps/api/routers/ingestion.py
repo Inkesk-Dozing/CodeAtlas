@@ -46,6 +46,11 @@ async def trigger_ingestion(
         status="queued",
         branch=payload.branch or repo.default_branch,
         progress=0,
+        files_total=0,
+        files_processed=0,
+        nodes_created=0,
+        edges_created=0,
+        stage_timings={},
     )
     db.add(task)
     repo.status = "analyzing"
@@ -195,6 +200,11 @@ async def retry_failed_ingestion(
         status="queued",
         branch=target_branch,
         progress=0,
+        files_total=0,
+        files_processed=0,
+        nodes_created=0,
+        edges_created=0,
+        stage_timings={},
     )
     db.add(task)
     repo.status = "analyzing"
