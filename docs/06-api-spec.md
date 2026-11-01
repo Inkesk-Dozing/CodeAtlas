@@ -701,6 +701,566 @@ WS /api/v1/repos/{repo_id}/ws/ingest/{task_id}
 
 ---
 
+## Chronos (Software Time Machine & Archaeology)
+
+### Get Commit Timeline
+```
+GET /api/v1/repos/{repo_id}/chronos/timeline?limit=20
+```
+
+**Response**:
+```json
+{
+  "commits": [
+    {
+      "hash": "a8f4c2e819b930d41029c",
+      "short_hash": "a8f4c2e",
+      "author": "Kush Bhardwaj",
+      "author_avatar": "https://avatars.githubusercontent.com/u/12345",
+      "date": "2026-10-25T14:30:00Z",
+      "message": "refactor: decouple database ORM models and isolate schema layer",
+      "tag": "v0.9.0",
+      "churn_added": 340,
+      "churn_deleted": 210,
+      "hotspot_score": 0.42,
+      "architectural_milestone": "PR #104: Database Decoupling"
+    }
+  ],
+  "total": 54,
+  "current_head": "HEAD"
+}
+```
+
+### Get Architectural Diff Between Commits
+```
+GET /api/v1/repos/{repo_id}/chronos/diff?from_commit=7e2a91f&to_commit=HEAD
+```
+
+**Response**:
+```json
+{
+  "from_commit": "7e2a91f",
+  "to_commit": "HEAD",
+  "added_nodes": ["apps/api/routers/chronos.py", "apps/api/routers/omniquery.py"],
+  "removed_nodes": [],
+  "modified_nodes": ["apps/api/main.py", "packages/shared/src/types.ts"],
+  "dependency_changes": [
+    {
+      "source": "apps/api/main.py",
+      "target": "apps/api/routers/chronos.py",
+      "action": "added"
+    }
+  ],
+  "summary": "Mounted Chronos and OmniQuery routers into FastAPI application."
+}
+```
+
+### Simulate What-If AST Mutation
+```
+POST /api/v1/repos/{repo_id}/chronos/simulate
+```
+
+**Request**:
+```json
+{
+  "target_node_id": "apps/api/auth/session.py",
+  "proposed_change": "Deprecate legacy session tokens and enforce asymmetric RS256 JWT validation."
+}
+```
+
+**Response**:
+```json
+{
+  "target_node_id": "apps/api/auth/session.py",
+  "target_path": "apps/api/auth/session.py",
+  "proposed_change": "Deprecate legacy session tokens and enforce asymmetric RS256 JWT validation.",
+  "risk_level": "high",
+  "blast_radius_count": 8,
+  "downstream_nodes": [
+    {
+      "id": "apps/api/routers/graph.py",
+      "name": "get_graph",
+      "path": "apps/api/routers/graph.py",
+      "depth": 1,
+      "relation": "imports"
+    }
+  ],
+  "impacted_endpoints": ["GET /api/v1/graph", "POST /api/v1/search"],
+  "recommended_reviewers": ["kush05bhardwaj", "inkeskdozing"],
+  "remediation_suggestions": [
+    "Run integration test suite against auth routers.",
+    "Verify backward compatibility for unexpired bearer tokens."
+  ]
+}
+```
+
+### Get Architectural Archaeology
+```
+GET /api/v1/repos/{repo_id}/chronos/archaeology/{node_id}
+```
+
+**Response**:
+```json
+{
+  "node_id": "apps/api/auth/session.py",
+  "node_path": "apps/api/auth/session.py",
+  "created_in_commit": "7e2a91f",
+  "created_at": "2026-09-12T10:15:00Z",
+  "original_author": "Kush Bhardwaj",
+  "decision_context": "PR #89 introduced asymmetric RS256 JWT validation to support distributed micro-service verification without central DB lookups.",
+  "linked_prs": [
+    { "number": 89, "title": "feat(auth): migrate session tokens to asymmetric RS256 JWTs" }
+  ],
+  "evolution_summary": "Created in initial auth rewrite; modified 14 times with 3 hotfixes.",
+  "hotspot_trend": "stable"
+}
+```
+
+---
+
+## OmniQuery (Database Time Machine & Schema Lens)
+
+### List Schema Models
+```
+GET /api/v1/repos/{repo_id}/omniquery/models
+```
+
+**Response**:
+```json
+{
+  "models": [
+    {
+      "name": "User",
+      "table_name": "users",
+      "file_path": "apps/api/models/user.py",
+      "fields": [
+        { "name": "id", "type": "UUID", "is_primary": true, "is_nullable": false },
+        { "name": "email", "type": "String", "is_primary": false, "is_nullable": false },
+        { "name": "status", "type": "String", "is_primary": false, "is_nullable": true }
+      ],
+      "connected_endpoints": [
+        "GET /api/v1/users",
+        "POST /api/v1/users",
+        "DELETE /api/v1/users/{id}"
+      ]
+    }
+  ]
+}
+```
+
+### Explain & Preview Natural Language Query
+```
+POST /api/v1/repos/{repo_id}/omniquery/explain
+```
+
+**Request**:
+```json
+{
+  "prompt": "Find all inactive users from last year and set their status to archived",
+  "model_name": "User"
+}
+```
+
+**Response**:
+```json
+{
+  "intent": "Find all inactive users from last year and set their status to archived",
+  "operation_type": "UPDATE",
+  "translated_sql": "UPDATE users SET status = 'archived' WHERE last_login < NOW() - INTERVAL '1 year' AND status = 'inactive';",
+  "explanation": "Scans users table for records where last_login exceeds 365 days and updates status to archived.",
+  "risk_level": "medium",
+  "estimated_affected_rows": 42,
+  "safety_check_passed": true,
+  "code_dependencies": [
+    {
+      "endpoint": "GET /api/v1/users",
+      "method": "GET",
+      "path": "apps/api/routers/users.py",
+      "impact": "compatible"
+    }
+  ]
+}
+```
+
+### Simulate Query in Sandbox
+```
+POST /api/v1/repos/{repo_id}/omniquery/simulate
+```
+
+**Request**:
+```json
+{
+  "sql": "UPDATE users SET status = 'archived' WHERE last_login < NOW() - INTERVAL '1 year';",
+  "model_name": "User"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "preview_rows": [
+    { "id": "1111-2222", "email": "inactive_test@example.com", "status": "archived" }
+  ],
+  "rollback_plan": "UPDATE users SET status = 'inactive' WHERE id IN ('1111-2222');",
+  "execution_time_ms": 14.2,
+  "warnings": []
+}
+```
+
+### Approve & Execute Transaction
+```
+POST /api/v1/repos/{repo_id}/omniquery/execute
+```
+
+**Request**:
+```json
+{
+  "sql": "UPDATE users SET status = 'archived' WHERE last_login < NOW() - INTERVAL '1 year';",
+  "model_name": "User",
+  "rollback_plan": "UPDATE users SET status = 'inactive' WHERE id IN ('1111-2222');"
+}
+```
+
+**Response**:
+```json
+{
+  "id": "exec_8f91a0c",
+  "timestamp": "2026-10-27T16:45:00Z",
+  "status": "executed",
+  "affected_rows": 1,
+  "message": "Transaction committed successfully with rollback point registered."
+}
+```
+
+---
+
+## Developer Telemetry (WakaTime-Compatible)
+
+### Ingest Active Editor Heartbeat
+```
+POST /api/v1/telemetry/heartbeat
+```
+Maps active developer editor coding time to an AST node without transmitting code text.
+
+**Request**:
+```json
+{
+  "entity": "apps/api/routers/auth.py",
+  "type": "file",
+  "time": 1730225400.0,
+  "project": "CodeAtlas",
+  "branch": "main",
+  "language": "python",
+  "is_write": true,
+  "cursorpos": { "line": 42, "column": 10 }
+}
+```
+
+**Response**:
+```json
+{
+  "status": "recorded",
+  "node_id": "b7e2898a-1a87-4b7f-8e42-1e9a3cf34b92",
+  "active_minutes_total": 42.5,
+  "cognitive_friction_index": 0.38
+}
+```
+
+### Get Telemetry & Friction Index
+```
+GET /api/v1/repos/{repo_id}/telemetry/stats?window=7d
+```
+
+**Response**:
+```json
+{
+  "repo_id": "uuid",
+  "total_focus_hours": 38.4,
+  "hotspots": [
+    {
+      "node_id": "uuid",
+      "file_path": "apps/api/routers/graph.py",
+      "active_minutes": 185.0,
+      "loc_churn": 42,
+      "cognitive_friction_index": 0.84,
+      "friction_tier": "critical"
+    }
+  ]
+}
+```
+
+---
+
+## GitReverse & AI Context Packager
+
+### Export AGENTS.md Agent Guidelines
+```
+GET /api/v1/repos/{repo_id}/prompts/agents-md
+```
+
+**Response**:
+```markdown
+# Autonomous Agent Context: CodeAtlas Monorepo
+## Architectural Boundaries
+- apps/web MUST NOT import apps/api directly.
+- packages/shared contains domain contracts only.
+...
+```
+
+### Export .cursorrules IDE Rules
+```
+GET /api/v1/repos/{repo_id}/prompts/cursorrules
+```
+
+### Export llms.txt Documentation Sitemap
+```
+GET /api/v1/repos/{repo_id}/prompts/llms-txt
+```
+
+### Package Targeted Subgraph Prompt
+```
+POST /api/v1/repos/{repo_id}/prompts/subgraph
+```
+
+**Request**:
+```json
+{
+  "node_id": "uuid",
+  "depth": 1,
+  "token_budget": 8192
+}
+```
+
+**Response**:
+```json
+{
+  "prompt_token_count": 3420,
+  "system_prompt": "You are refactoring a subcomponent in CodeAtlas...",
+  "interface_contracts": "interface GraphNodeProps { ... }",
+  "caller_context": ["apps/web/src/components/graph/Canvas.tsx"]
+}
+```
+
+---
+
+## CodeAtlas Flight Simulator
+
+### List Available Missions
+```
+GET /api/v1/flight-simulator/missions
+```
+
+**Response**:
+```json
+[
+  {
+    "id": "mission_git_01",
+    "title": "Branching & First Pull Request",
+    "track": "beginner",
+    "difficulty": "introductory",
+    "reward_badge_tier": "Git Flight Certified"
+  },
+  {
+    "id": "mission_git_02",
+    "title": "Upstream Merge Conflict Resolution",
+    "track": "intermediate",
+    "difficulty": "moderate",
+    "reward_badge_tier": "Conflict Master"
+  }
+]
+```
+
+### Execute Virtual Git Command in Session
+```
+POST /api/v1/flight-simulator/sessions/{session_id}/command
+```
+
+**Request**:
+```json
+{
+  "command": "git checkout -b feat/add-readme-badge"
+}
+```
+
+**Response**:
+```json
+{
+  "stdout": "Switched to a new branch 'feat/add-readme-badge'",
+  "current_branch": "feat/add-readme-badge",
+  "dag_state": { "head": "commit_1a", "branches": ["main", "feat/add-readme-badge"] }
+}
+```
+
+### Submit Simulated Pull Request for Bot Review
+```
+POST /api/v1/flight-simulator/sessions/{session_id}/pr-review
+```
+
+**Response**:
+```json
+{
+  "pr_number": 42,
+  "status": "changes_requested",
+  "ci_checks": {
+    "linter": "passed",
+    "typecheck": "passed",
+    "unit_tests": "failed"
+  },
+  "bot_comments": [
+    {
+      "file": "README.md",
+      "line": 12,
+      "message": "Great work on the badge syntax! Remember to add alt text for accessibility."
+    }
+  ]
+}
+```
+
+---
+
+## Verifiable Badges & Credential Network
+
+### Get Dynamic Contributor SVG Badge
+```
+GET /api/v1/badges/contributor/{username}.svg?theme=dark&style=hexagon
+```
+Returns a pixel-perfect, cache-optimized dynamic SVG badge for GitHub READMEs.
+
+### Get Collectible Badge Board SVG
+```
+GET /api/v1/badges/board/{username}.svg
+```
+Returns an aggregated Holopin-style hexagonal badge board SVG for developer profile READMEs.
+
+### Verify Digital Credential (Ed25519)
+```
+GET /api/v1/badges/verify/{cert_id}
+```
+
+**Response**:
+```json
+{
+  "cert_id": "ca_cert_8f91a0c",
+  "recipient": "kush05bhardwaj",
+  "tier": "Git Flight Certified",
+  "repository": "CodeAtlas",
+  "issued_at": 1730225400,
+  "signature_valid": true,
+  "algorithm": "Ed25519",
+  "signer_public_key": "ed25519_pk_9a102b...",
+  "proof_replay_url": "https://codeatlas.dev/repos/codeatlas/graph?replay=cert_8f91a0c"
+}
+```
+
+---
+
+## GitHub Achievements Tracker & AI Context Endpoints
+
+### Get Canonical Achievements Catalog
+```
+GET /api/v1/achievements/catalog
+```
+Returns all 9 supported GitHub achievements, tiers (Base, Bronze, Silver, Gold), unlock thresholds, and practical optimization tips (mirroring `gitbadgecheck.vercel.app`).
+
+**Response**:
+```json
+{
+  "catalog_version": "2026.1",
+  "provider": "CodeAtlas GitBadgeCheck Engine",
+  "total_available": 9,
+  "achievements": {
+    "pull-shark": {
+      "id": "pull-shark",
+      "name": "Pull Shark",
+      "category": "active",
+      "description": "Merged pull requests into repositories.",
+      "icon": "🦈",
+      "metric_name": "merged_prs",
+      "tiers": [
+        {"tier": "Base", "threshold": 2, "multiplier": "x1"},
+        {"tier": "Bronze", "threshold": 16, "multiplier": "x2"},
+        {"tier": "Silver", "threshold": 128, "multiplier": "x3"},
+        {"tier": "Gold", "threshold": 1024, "multiplier": "x4"}
+      ]
+    }
+  }
+}
+```
+
+### Track User GitHub Achievements & Live Progress
+```
+GET /api/v1/achievements/user/{username}
+```
+Inspects a public profile's achievements, current unlocked tiers, progress percentages toward the next tier, remaining contributions needed, and estimated developer XP.
+
+**Query Parameters** (Optional overrides):
+- `merged_prs`: Override merged PR count
+- `max_stars`: Override top repository stars
+- `coauthored_commits`: Override co-authored commits
+- `accepted_answers`: Override accepted discussion answers
+
+**Response**:
+```json
+{
+  "username": "octocat",
+  "total_unlocked": 7,
+  "total_achievements": 9,
+  "completion_rate": 77.8,
+  "active_badges": 6,
+  "legacy_badges": 1,
+  "highest_rank_badge": "Pull Shark (Silver)",
+  "estimated_xp": 2650,
+  "achievements": [
+    {
+      "id": "pull-shark",
+      "name": "Pull Shark",
+      "category": "active",
+      "icon": "🦈",
+      "unlocked": true,
+      "current_tier": "Silver",
+      "current_multiplier": "x3",
+      "current_count": 130,
+      "next_tier": "Gold",
+      "next_threshold": 1024,
+      "remaining_for_next_tier": 894,
+      "progress_percentage": 0.2,
+      "tips": "Submit and merge PRs across public repositories. Squash or rebase merges count."
+    }
+  ]
+}
+```
+
+### AI-Optimized Achievement Context for External Agents
+```
+GET /api/v1/achievements/ai-context/{username}
+```
+Generates token-budgeted prompt contexts, actionable next steps, and markdown cards ready to inject directly into LLM / AI assistant prompts.
+
+**Query Parameters**:
+- `target_badge` (optional): Badge ID to prioritize (e.g. `pull-shark`)
+
+**Response**:
+```json
+{
+  "prompt_context": "<github_achievements user="octocat" unlocked="7/9" xp="2650">\n  <status highest_rank="Pull Shark (Silver)" completion_rate="77.8%">\n  <unlocked_badges>\n    <badge id="pull-shark" name="Pull Shark" tier="Silver" count="130" progress="0.2%" />\n  </unlocked_badges>\n  <recommended_next_actions>\n    <action priority="1">Advance Pair Extraordinaire to Silver: Needs 12 more co-authored commits.</action>\n  </recommended_next_actions>\n</github_achievements>",
+  "markdown_card": "### 🏆 GitHub Achievement Profile: @octocat\n- **Completion**: 7/9 badges (77.8%) | **XP**: 2650\n...",
+  "raw_stats": {
+    "username": "octocat",
+    "total_unlocked": 7,
+    "total_achievements": 9,
+    "estimated_xp": 2650,
+    "completion_rate": 77.8
+  },
+  "actionable_next_steps": [
+    "Advance Pair Extraordinaire to Silver: Needs 12 more co-authored commits.",
+    "Unlock Galaxy Brain: Needs 2 accepted discussion answers."
+  ]
+}
+```
+
+---
+
 ## Health & Monitoring
 
 ### Health Check

@@ -11,13 +11,37 @@
 ## Roadmap Visualization
 
 ```
-Week:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
-       ├───┴───┤   Phase 0: Foundation
-               ├───────┴───┴───┤   Phase 1: Ingestion & Graph
-                           ├───┴───┴───┤   Phase 2: Issue Mapping & Search
-                                       ├───┴───┴───┤   Phase 3: AI & Docs
-                                                   ├───────┴───┴───┤   Phase 4: SaaS & Polish
-                                                                   └─────── Phase 5: Advanced (Post-launch)
+Week:  1-2   3-5   6-8   9-11  12-16  17-20  21-24  25-28  29-32
+       ├───┤ Phase 0: Foundation
+             ├───┤ Phase 1: Ingestion & Graph
+                   ├───┤ Phase 2: Issue Mapping & Search
+                         ├───┤ Phase 3: AI & Living Docs
+                               ├───┤ Phase 4: Multi-Tenant SaaS
+                                     ├───┤ Phase 5: CodeAtlas Prime Convergence
+                                           ├───┤ Phase 6: Flight Simulator & Credentials
+                                                 ├───┤ Phase 7: IDE Extensions & Federation
+                                                       ├───┤ Phase 8: Autonomous SWE Agents
+                                                             ├───┤ Phase 9: Enterprise Air-Gap
+```
+
+### Master Milestone Progression Flowchart
+
+```mermaid
+flowchart LR
+    M0["M0: Foundation"] --> M1["M1: Ingestion"]
+    M1 --> M2["M2: Issue Mapping"]
+    M2 --> M3["M3: AI Living Docs"]
+    M3 --> M4["M4: Beta SaaS"]
+    M4 --> M5["M5: Production GA"]
+    M5 --> M6["M6: Prime Convergence"]
+    M6 --> M7["M7: Flight Simulator"]
+    M7 --> M8["M8: Multi-IDE Extensions"]
+    M8 --> M9["M9: Autonomous Agents"]
+    M9 --> M10["M10: Enterprise Air-Gap"]
+    M10 --> M11["M11: Hyperscale Observability"]
+    M11 --> M12["M12: WebGPU Canvas"]
+    M12 --> M13["M13: Neural AST"]
+    M13 --> M14["M14: Enterprise Federation"]
 ```
 
 ---
@@ -310,32 +334,105 @@ Week:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
 
 ---
 
-## Phase 5: Advanced Features (Post-Launch)
+## Phase 5: CodeAtlas Prime Convergence (Weeks 13-16)
 
-### Quarter 1 (Months 1-3 after launch)
-| Feature | Priority | Effort | Description |
-|---------|----------|--------|-------------|
-| Diff visualization | P1 | 2 weeks | Show architectural changes between branches/PRs |
-| Impact analysis | P1 | 2 weeks | "If I change this model, what breaks?" |
-| VS Code extension | P1 | 3 weeks | View graph in IDE, search from editor |
-| Slack bot | P2 | 1 week | "/codeatlas where is auth?" in Slack |
+**Goal**: Full convergence of AST dependency topology and GitWatcher temporal telemetry into CodeAtlas Prime.
 
-### Quarter 2 (Months 4-6 after launch)
-| Feature | Priority | Effort | Description |
-|---------|----------|--------|-------------|
-| Team knowledge graph | P1 | 3 weeks | Who owns what, tribal knowledge capture |
-| PR integration | P1 | 2 weeks | Auto-map PR changes to affected areas |
-| Custom rules | P2 | 2 weeks | Organization-specific architecture patterns |
-| Multi-repo support | P2 | 2 weeks | Cross-repo dependency mapping |
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 13 | PR Blast Radius Bot | Automated GitHub App PR bot commenting with downstream service impact and recommended reviewers |
+| Week 14 | Architecture Boundary Linter | Strict import boundary enforcement via `codeatlas.config.json` integrated into CI/CD |
+| Week 15 | Bus Factor & Silo Risk | Single-maintainer dependency risk alerts, ownership heatmaps, and knowledge preservation metrics |
+| Week 16 | Dynamic Badges & IDE Extension | Dynamic SVG README badges and VS Code graph exploration extension |
 
-### Quarter 3+ (Months 7-12)
-| Feature | Priority | Effort | Description |
-|---------|----------|--------|-------------|
-| Auto-PR generation | P3 | 3 weeks | Scaffold fixes for common issue patterns |
-| Compliance reports | P2 | 2 weeks | License scanning, security hotspots |
-| Notion/Confluence sync | P2 | 1 week | Export docs to external tools |
-| Self-hosted option | P2 | 4 weeks | On-premise deployment for enterprises |
-| Fine-tuned code model | P3 | 4 weeks | Custom embedding model for better accuracy |
+---
+
+## Phase 6: Flight Simulator, Active Telemetry & Verifiable Credential Ecosystem (Weeks 17-20)
+
+**Goal**: High-fidelity Git flight simulator, verifiable Ed25519 developer credentials, WakaTime-compatible cognitive friction tracking, and AST prompt generator.
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 17 | Chronos & OmniQuery | Time-travel commit scrubber, what-if AST refactor simulator, natural-language database query workbench |
+| Week 18 | OpenSourceMapper & Blueprints | AST isolation scoring for Good First Issues, 3-step contributor roadmaps, prerequisite concept checklists |
+| Week 19 | Active Editor Telemetry & CFI | WakaTime heartbeat ingestion, focus time AST mapping, Cognitive Friction Index (CFI) frustration alerts |
+| Week 20 | Flight Simulator & Verifiable Badges | In-browser virtual Git shell, PR bot missions, Ed25519 tamper-proof signed SVG badges, public verification portal |
+
+---
+
+## Phase 7: IDE Extensions, Micro-Workspaces & Cross-Monorepo Federation (Weeks 21-24)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 21 | VS Code & JetBrains Extensions | Language Server Protocol (LSP) AST bridge, JetBrains JCEF tool window, in-editor hover blast radiuses |
+| Week 22 | Neovim & Desktop Tauri Sidecar | Neovim Lua plugin with treesitter telemetry, Tauri Rust bare-metal multi-threaded parser |
+| Week 23 | Offline SQLite Edge Cache & Sync | Client-side SQLite database, offline graph navigation, timestamped delta synchronization |
+| Week 24 | CodeAtlasQL & Monorepo Federation | Custom AST query language, multi-repository microservice topology federation, package boundary firewall |
+
+---
+
+## Phase 8: Autonomous SWE Agents, Code Repair & Benchmark Evaluation (Weeks 25-28)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 25 | SWE-bench Evaluation Harness | Isolated container test harness running SWE-bench Lite and Full benchmark tasks |
+| Week 26 | Fault Localization (SBFL) & AST Pruning | Ochiai / Tarantula spectrum-based fault localization, suspiciousness scoring, token-budget context assembly |
+| Week 27 | Multi-Agent Orchestrator | Planner, Coder, Reviewer agent swarm with automated reflection and self-healing retry loop |
+| Week 28 | Sandbox Security & Formal Verification | Ephemeral rootless Docker containers (`--network none`), formal AST import verification, auto-PR generator |
+
+---
+
+## Phase 9: Enterprise Governance, Security Compliance & Air-Gapped High Availability (Weeks 29-32)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 29 | 100% Air-Gapped Helm Charts | Offline Kubernetes Helm deployment (`charts/codeatlas`), pre-packaged local LLM weights, zero egress |
+| Week 30 | SOC 2 Immutable Audit Logging & SSO | SHA-256 Merkle-chained audit logging, enterprise SAML 2.0 / OIDC SSO (Okta, Azure AD), SCIM provisioning |
+| Week 31 | PostgreSQL Row-Level Security & PBAC | Database-level tenant isolation (RLS), path-based access control (PBAC), OSS license compliance |
+| Week 32 | High-Availability HA Clusters & GA | Automated cross-region streaming replication, Redis Sentinel cluster, Celery HPA, Enterprise 1.0 GA |
+---
+
+## Phase 10: Hyperscale Observability, Distributed Resilience & Stream Ingestion (Weeks 33-36)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 33 | OpenTelemetry & Distributed Rate Limiting | W3C trace context propagation across FastAPI/Celery, Redis Cluster token bucket limiter, SingleFlight request coalescing |
+| Week 34 | Zero-Copy mmap Streaming Parser | Apache Arrow columnar buffers + POSIX mmap parsing multi-gigabyte source files with zero user-space RAM duplication |
+| Week 35 | Kafka High-Velocity Ingestion & eBPF | 32-partition Kafka topic (100k events/s), eBPF kernel syscall sandbox, Landlock LSM filesystem restrictions |
+| Week 36 | Kubernetes KEDA & Multi-Region HA | KEDA autoscaling Celery worker pools, PostgreSQL 16 multi-region logical replication, WAL-G continuous archiving |
+
+---
+
+## Phase 11: WebGPU High-Performance Canvas & Real-Time CRDT Multi-User Collaboration (Weeks 37-40)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 37 | WebGPU Compute & Instanced Rendering | WGSL compute shaders simulating 1,000,000+ nodes in GPU VRAM, single-pass instanced draw calls, WebGL 2.0 fallback |
+| Week 38 | Wasm Physics & Community Detection | Multi-threaded Rust/Wasm Barnes-Hut & Fast Multipole Method (FMM) physics, client-side Louvain modularity clustering |
+| Week 39 | Hierarchical Edge Bundling & Yjs CRDT | Cubic B-spline edge bundling, Yjs binary state vector multi-user spatial co-editing, live cursor presence tracking |
+| Week 40 | Level-of-Detail Zoom & Chronos Shaders | 4-tier LoD (LOD0 to LOD3) semantic zoom, WebGL temporal vertex shader interpolation for butter-smooth Git commit scrubbing |
+
+---
+
+## Phase 12: Domain-Specific AI, Contrastive AST Embeddings & Local Neural Model Quantization (Weeks 41-44)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 41 | Relational GNN & InfoNCE Contrastive Loss | Relational GCN / Tree-LSTM AST embeddings, InfoNCE and Triplet Margin Loss self-supervised contrastive training |
+| Week 42 | GGUF Quantization & Hardware Acceleration | Standalone GGUF 4-bit/8-bit compiled weights (< 1.8GB), Apple Silicon Metal (MPS), NVIDIA CUDA, WebGPU shaders |
+| Week 43 | Multi-Modal Whiteboard Vision Parser | Fine-tuned Vision Transformer (ViT) converting whiteboard sketches/diagrams into live CodeAtlas graph nodes |
+| Week 44 | Autonomous Formal AST Refactoring | Comment-preserving concrete syntax tree rewriting via LibCST (Python), TS-Morph (TS), and Syn/Quote (Rust) |
+
+---
+
+## Phase 13: SCM Ecosystem Federation, CI/CD Native Quality Gates & Developer Platform API (Weeks 45-48)
+
+| Week | Feature / Track | Deliverables |
+|---|---|---|
+| Week 45 | Official GitHub Actions & CI/CD Gates | Official TypeScript GitHub Action (`codeatlas/action@v1`), SARIF 2.1.0 reports, PR check runs blocking architectural drift |
+| Week 46 | Multi-SCM Federation & Webhook Gateway | Ingestion connectors for GitLab Self-Managed, Bitbucket Data Center, Perforce Helix Core, Gerrit, and Azure DevOps |
+| Week 47 | Public Developer APIs & Client SDKs | Apollo Federation v2 GraphQL API with DataLoader, REST API v2 (OpenAPI 3.1), auto-generated SDKs (TS, Python, Go, Rust) |
+| Week 48 | Standalone Static Exporter & Golden Master | Zero-server offline HTML/Wasm documentation exporter, native Go/Rust CLI (`codeatlas`), Golden Master production release |
 
 ---
 
@@ -349,8 +446,15 @@ Week:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
 | M3: AI Features | End of Week 11 | Summaries, complexity, chat Q&A |
 | M4: Beta Launch | End of Week 13 | Multi-tenant, billing, admin |
 | M5: GA Launch | End of Week 16 | Production-ready, documented, monitored |
-| M6: V2.0 | Month 6 | IDE extension, PR integration, team features |
-
+| M6: CodeAtlas Prime | End of Week 18 | Chronos time engine, OmniQuery lens, PR blast radius bot |
+| M7: Prime Ecosystem | End of Week 20 | Flight Simulator, Ed25519 verifiable badges, WakaTime telemetry, GitReverse |
+| M8: Multi-IDE Extensions | End of Week 24 | VS Code LSP, JetBrains JCEF, Tauri desktop, offline SQLite, CodeAtlasQL |
+| M9: Autonomous SWE Agents | End of Week 28 | SWE-bench benchmark harness, SBFL fault localizer, multi-agent code repair |
+| M10: Enterprise Air-Gap GA | End of Week 32 | Air-gapped Helm charts, SOC 2 audit logs, SAML 2.0 SSO, PostgreSQL RLS, HA failover |
+| M11: Hyperscale Observability | End of Week 36 | OpenTelemetry distributed tracing, Kafka 100k events/s, eBPF sandbox, multi-region active-active |
+| M12: WebGPU Canvas & CRDT | End of Week 40 | WebGPU 1M+ nodes at 120 FPS, Wasm Barnes-Hut & FMM physics, Yjs CRDT co-editing, Chronos vertex shaders |
+| M13: Neural AST & Quantization | End of Week 44 | Relational GNN AST embeddings, GGUF 4-bit local inference (Metal/CUDA), ViT whiteboard parser, LibCST |
+| M14: Enterprise Federation & Golden Master | End of Week 48 | Official GitHub Action & CI gates, multi-SCM federation, GraphQL/REST SDKs, offline HTML exporter, 500-Issue GA |
 ---
 
 ## Team Allocation by Phase

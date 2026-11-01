@@ -1,3 +1,14 @@
+import type {
+  ChronosCommit,
+  ChronosDiff,
+  ChronosSimulation,
+  ChronosArchaeologyRecord,
+  OmniQuerySchemaModel,
+  OmniQueryExplanation,
+  OmniQuerySimulation,
+  OmniQueryExecutionRecord,
+} from '@codeatlas/shared';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface RequestOptions {
@@ -218,5 +229,45 @@ export const api = {
       ),
     deleteSession: (repoId: string, sessionId: string) =>
       request<void>(`/repos/${repoId}/chat/sessions/${sessionId}`, { method: 'DELETE' }),
+  },
+
+  // Chronos (Software Time Machine)
+  chronos: {
+    timeline: (repoId: string, limit = 20) =>
+      request<{ commits: ChronosCommit[]; total: number; current_head: string }>(
+        `/repos/${repoId}/chronos/timeline?limit=${limit}`,
+      ),
+    diff: (repoId: string, fromCommit: string, toCommit: string) =>
+      request<ChronosDiff>(
+        `/repos/${repoId}/chronos/diff?from_commit=${encodeURIComponent(fromCommit)}&to_commit=${encodeURIComponent(toCommit)}`,
+      ),
+    simulate: (repoId: string, targetNodeId: string, proposedChange: string) =>
+      request<ChronosSimulation>(`/repos/${repoId}/chronos/simulate`, {
+        method: 'POST',
+        body: { target_node_id: targetNodeId, proposed_change: proposedChange },
+      }),
+    archaeology: (repoId: string, nodeId: string) =>
+      request<ChronosArchaeologyRecord>(`/repos/${repoId}/chronos/archaeology/${nodeId}`),
+  },
+
+  // OmniQuery (Database Time Machine)
+  omniquery: {
+    models: (repoId: string) =>
+      request<{ models: OmniQuerySchemaModel[] }>(`/repos/${repoId}/omniquery/models`),
+    explain: (repoId: string, prompt: string, modelName?: string) =>
+      request<OmniQueryExplanation>(`/repos/${repoId}/omniquery/explain`, {
+        method: 'POST',
+        body: { prompt, model_name: modelName },
+      }),
+    simulate: (repoId: string, sql: string, modelName?: string) =>
+      request<OmniQuerySimulation>(`/repos/${repoId}/omniquery/simulate`, {
+        method: 'POST',
+        body: { sql, model_name: modelName },
+      }),
+    execute: (repoId: string, sql: string, modelName?: string, rollbackPlan?: string) =>
+      request<OmniQueryExecutionRecord>(`/repos/${repoId}/omniquery/execute`, {
+        method: 'POST',
+        body: { sql, model_name: modelName, rollback_plan: rollbackPlan },
+      }),
   },
 };

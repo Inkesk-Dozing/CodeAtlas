@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { X, FileCode, Hash, Link2, Sparkles } from 'lucide-react';
+import { X, FileCode, Hash, Link2, Sparkles, Zap, Database } from 'lucide-react';
 import { useGraphStore, type GraphNode, type GraphEdge } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useChronosStore } from '@/stores/chronosStore';
+import { useOmniQueryStore } from '@/stores/omniQueryStore';
 import { NODE_TYPE_COLORS, NODE_TYPE_LABELS } from '@codeatlas/shared';
 
 export function NodeDetailPanel() {
@@ -68,6 +70,48 @@ export function NodeDetailPanel() {
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === 'details' && (
           <div className="space-y-4">
+            {/* Quick Engine Actions */}
+            <div className="flex flex-col gap-2 pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    useChronosStore.getState().setSimulationModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors flex-1 justify-center"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Simulate Refactor
+                </button>
+
+                <button
+                  onClick={() => {
+                    const repoId = (node as { repoId?: string }).repoId || window.location.pathname.split('/repos/')[1]?.split('/')[0] || '';
+                    if (repoId) {
+                      useChronosStore.getState().fetchArchaeology(repoId, node.id);
+                    }
+                    useUIStore.getState().openPanel('chronos-archaeology');
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/20 transition-colors flex-1 justify-center"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Archaeology
+                </button>
+              </div>
+
+              {(node.type === 'model' || node.path.includes('model') || node.path.includes('schema')) && (
+                <button
+                  onClick={() => {
+                    useOmniQueryStore.getState().selectModelByName(node.name);
+                    useUIStore.getState().openPanel('omniquery');
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-pink-500/30 bg-pink-500/10 px-2.5 py-1.5 text-xs font-semibold text-pink-400 hover:bg-pink-500/20 transition-colors w-full justify-center"
+                >
+                  <Database className="h-3.5 w-3.5" />
+                  Open in OmniQuery Database Lens
+                </button>
+              )}
+            </div>
+
             <InfoRow icon={<FileCode className="h-4 w-4" />} label="Path" value={node.path} mono />
             {node.language && (
               <InfoRow icon={<Hash className="h-4 w-4" />} label="Language" value={node.language} />

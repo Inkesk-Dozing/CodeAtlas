@@ -22,7 +22,7 @@
   <a href="#core-features">Features</a> •
   <a href="#api-surface-29-routes">API Surface</a> •
   <a href="docs/README.md">Full Documentation</a> •
-  <a href="docs/issues/README.md">Issue Backlog (Phases 0–5)</a> •
+  <a href="docs/issues/README.md">Engineering Issue Backlog (300 Issues across Phases 0–9)</a> •
   <a href="docs/roadmap/unified-platform-roadmap.md">CodeAtlas Prime Roadmap</a>
 </p>
 
@@ -58,8 +58,8 @@
 CodeAtlas/
 ├── apps/
 │   ├── api/                 FastAPI backend (Python 3.11)
-│   │   ├── routers/         auth, repos, graph, search, ingestion,
-│   │   │                    issues, summaries, chat, webhooks
+│   │   ├── routers/         auth, repos, graph, chronos, omniquery,
+│   │   │                    search, ingestion, issues, summaries, chat, webhooks
 │   │   ├── services/
 │   │   │   ├── auth.py      JWT (RS256/HS256), GitHub OAuth
 │   │   │   ├── mapping/     5-signal issue → code ranker
@@ -114,21 +114,29 @@ pnpm dev                                                # or: pnpm --filter @cod
 
 ## Core features
 
-- **Architecture graph** — React Flow canvas with BFS layered layout, node/edge
+- **Interactive Architecture Graph (CodeAtlas)** — React Flow canvas with BFS layered layout, node/edge
   filtering, semantic search, subgraph exploration, and minimap.
-- **5-signal issue mapping** — semantic (pgvector), structural (pg_trgm),
-  topological (1-hop propagation), historical (reviewer feedback), hotspot
-  (node degree) → weighted confidence with high/medium/low tiers and suggested
-  actions.
-- **RAG chat & summaries** — question answering grounded in retrieved code with
+- **Software Time Machine (Chronos)** — Interactive commit timeline scrubber, hotspot velocity heatmaps,
+  architectural archaeology ("Why was this changed?"), and what-if refactor mutation simulations.
+- **Conversational Database Time Machine (OmniQuery)** — Discovered ORM models (Prisma, SQLAlchemy, Django),
+  natural-language to SQL translation, cross-engine breaking route analysis, and sandboxed transactions with rollback plans.
+- **CodeAtlas Flight Simulator** — In-browser virtual Git shell, automated PR bot reviews, and merge conflict resolution challenges.
+- **Holopin-Style Verifiable Profile Badges** — Dynamic vector SVG badges with Ed25519 tamper-proof digital signatures and public verification portal.
+- **OpenSourceMapper** — AST subgraph isolation scoring for Good First Issues, 3-step contributor blueprints, and prerequisite mental model checklists.
+- **Active Editor Telemetry & CFI** — WakaTime-compatible heartbeat stream mapping focus minutes to AST nodes and detecting Cognitive Friction Index (CFI) hotspots.
+- **GitReverse & AI Context Packager** — Hierarchical token-budgeted prompt optimizer generating `AGENTS.md`, `.cursorrules`, and `llms.txt`.
+- **6-Signal Issue Mapping** — Semantic (pgvector), structural (pg_trgm),
+  topological (1-hop propagation), historical (reviewer feedback), and temporal churn decay
+  → weighted confidence with high/medium/low tiers and suggested actions.
+- **RAG Chat & Summaries** — Question answering grounded in retrieved code with
   `[path]` citations; node/repo/architecture summaries with hash-based caching.
-- **Ingestion pipeline** — clone → parse → extract → embed → persist, with
+- **Ingestion Pipeline** — Clone → parse → extract → embed → persist, with
   per-stage progress, timings, and incremental mode.
-- **Production concerns** — request IDs, sliding-window rate limiting, HMAC
+- **Production Concerns** — Request IDs, sliding-window rate limiting, HMAC
   webhook verification, CORS, health/ready probes, Prometheus metrics,
   structured logs, GitHub OAuth, RS256/HS256 JWT.
 
-## API surface (29 routes)
+## API surface (40 routes)
 
 All routes are under `/api/v1`; interactive docs at `/docs`.
 
@@ -137,6 +145,8 @@ All routes are under `/api/v1`; interactive docs at `/docs`.
 | Auth | `POST /auth/callback`, `POST /auth/refresh`, `GET /auth/me` |
 | Repos | `GET/POST /repos`, `GET/PATCH/DELETE /repos/{id}`, `GET /repos/{id}/stats` |
 | Graph | `GET /repos/{id}/graph`, `POST /repos/{id}/graph/subgraph`, `GET /repos/{id}/nodes/{id}` |
+| Chronos | `GET .../chronos/timeline`, `GET .../chronos/diff`, `POST .../chronos/simulate`, `GET .../chronos/archaeology/{node_id}` |
+| OmniQuery | `GET .../omniquery/models`, `POST .../omniquery/explain`, `POST .../omniquery/simulate`, `POST .../omniquery/execute` |
 | Search | `POST /repos/{id}/search/{semantic,structural,hybrid}` |
 | Ingestion | `POST /repos/{id}/ingest/trigger`, `GET /repos/{id}/ingest/status` |
 | Issues | `GET /repos/{id}/issues`, `POST .../{n}/analyze`, `GET .../{n}/mapping`, `POST .../{n}/feedback` |
@@ -152,19 +162,48 @@ frontend  10 tests passed (vitest)
 typecheck tsc --noEmit clean (web + shared)
 lint      next lint clean (warnings only)
 build     next build production build OK
-openapi   29 paths / 33 schemas generated
+openapi   37 paths / 42 schemas generated
 ```
 
 ## Documentation & Roadmap
  
+
+### 14-Phase Engineering Architecture & Roadmap (500 Production Specifications)
+
+```mermaid
+flowchart LR
+    P0["P0: Foundation"] --> P1["P1: Ingestion"]
+    P1 --> P2["P2: Canvas UX"]
+    P2 --> P3["P3: AI & RAG"]
+    P3 --> P4["P4: SaaS Polish"]
+    P4 --> P5["P5: Prime Convergence"]
+    P5 --> P6["P6: Flight Simulator & Badges"]
+    P6 --> P7["P7: IDE Extensions & Sidecars"]
+    P7 --> P8["P8: Autonomous SWE Agents"]
+    P8 --> P9["P9: Enterprise Governance & Air-Gap"]
+    P9 --> P10["P10: Hyperscale Observability"]
+    P10 --> P11["P11: WebGPU Canvas & CRDT"]
+    P11 --> P12["P12: Neural AST & Quantization"]
+    P12 --> P13["P13: Enterprise Federation & Golden Master"]
+```
+
 Full planning and engineering docs live in [`docs/`](docs/README.md):
 - [Master System Overview](docs/01-project-overview.md)
-- [Complete Issue Backlog (Phases 0–5)](docs/issues/README.md) — 115+ granular specifications covering foundation through production and CodeAtlas Prime
+- [Chronos Engine Specification](docs/components/chronos-engine.md) — Software Time Machine, timeline scrubber, what-if AST mutation, archaeology
+- [OmniQuery Lens Specification](docs/components/omniquery-lens.md) — Conversational Database Time Machine, NL-to-SQL, multi-stage safety, rollback plan
+- [Flight Simulator Specification](docs/components/flight-simulator.md) — In-browser virtual Git shell, simulated PR bot, merge conflict sandbox
+- [Verifiable Badges Specification](docs/components/verifiable-badges.md) — Dynamic SVG generator, Ed25519 digital signatures, public proof verification
+- [GitHub Achievement Tracker & AI Context API](docs/api/achievements-tracker-ai-spec.md) — Live badge forecasting (Pull Shark, Starstruck, etc.), GitBadgeCheck mirror, token-budgeted AI prompt cards
+- [Active Telemetry Specification](docs/components/active-telemetry.md) — WakaTime heartbeat ingestion, focus time AST mapping, Cognitive Friction Index
+- [GitReverse Engine Specification](docs/components/gitreverse-engine.md) — AST-to-prompt packager, `AGENTS.md`, `.cursorrules`, and `llms.txt`
+- [OpenSourceMapper Specification](docs/components/opensource-mapper.md) — Contributor blueprints, isolation scoring, prerequisite checklists
+- [Component Interaction Map](docs/architecture/component-interaction-map.md) — Asynchronous architecture, sequence diagrams, tri-engine interaction map
+- [Unified Platform Roadmap (CodeAtlas Prime)](docs/roadmap/unified-platform-roadmap.md) — 48-week, 14-phase master convergence specification
+- [Complete Engineering Issue Backlog (500 Issues across Phases 0–13)](docs/.issues/README.md) — 500 granular specifications with Mermaid architecture suites covering foundation through hyperscale federation
 - [Phase Implementation Plan](docs/03-phases.md)
-- [Unified Platform Roadmap (CodeAtlas Prime)](docs/roadmap/unified-platform-roadmap.md)
 - [Ingestion Pipeline Engine](docs/04-ingestion-pipeline.md)
-- [5-Signal Issue-to-Code Mapping](docs/05-issue-mapping.md)
-- [REST API Specification (29 Routes)](docs/06-api-spec.md)
+- [6-Signal Issue-to-Code Mapping](docs/05-issue-mapping.md)
+- [REST API Specification (40 Routes)](docs/06-api-spec.md)
 - [Frontend Architecture & Canvas UX](docs/07-frontend-architecture.md)
 - [Database Schema & Migrations](docs/08-database-schema.md)
 - [Security Threat Model & Policies](docs/11-security.md)
