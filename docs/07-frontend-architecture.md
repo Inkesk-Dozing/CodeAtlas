@@ -58,6 +58,13 @@ apps/web/
 │   │   │   │   ├── IssueMappingPanel.tsx
 │   │   │   │   ├── SearchResultsPanel.tsx
 │   │   │   │   └── ChatPanel.tsx
+│   │   │   └── timeline/
+│   │   │       ├── ChronosTimeline.tsx
+│   │   │       ├── ChronosTimelineBar.tsx
+│   │   │       ├── ChronosSimulationModal.tsx
+│   │   │       └── ChronosArchaeologyModal.tsx
+│   │   │   └── omnidrawer/
+│   │   │       └── OmniQueryDrawer.tsx
 │   │   │   └── hooks/
 │   │   │       ├── useGraph.ts
 │   │   │       ├── useNodeSelection.ts
@@ -73,7 +80,7 @@ apps/web/
 │   │       └── WebSocketProvider.tsx
 │   ├── lib/
 │   │   ├── api/
-│   │   │   ├── client.ts       # Axios/Fetch wrapper
+│   │   │   ├── client.ts       # Axios/Fetch wrapper (repos, graph, chronos, omniquery)
 │   │   │   ├── endpoints.ts    # API endpoint constants
 │   │   │   └── types.ts        # API response types
 │   │   ├── auth/
@@ -250,16 +257,110 @@ interface RepoState {
 ```typescript
 interface UIState {
   sidebarOpen: boolean;
-  rightPanel: 'node-detail' | 'issue-mapping' | 'search' | 'chat' | null;
-  searchQuery: string;
-  searchResults: SearchResult[];
-  chatHistory: ChatMessage[];
+  activePanel: 'node-detail' | 'issue-mapping' | 'search' | 'chat' | 'summary' | 'omniquery' | 'chronos-archaeology' | null;
+  rightPanelOpen: boolean;
+  timelineOpen: boolean;
   theme: 'light' | 'dark' | 'system';
   
   toggleSidebar: () => void;
-  openPanel: (panel: UIState['rightPanel']) => void;
+  toggleTimeline: () => void;
+  openPanel: (panel: Panel) => void;
   closePanel: () => void;
-  setTheme: (theme: UIState['theme']) => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+}
+```
+
+### chronosStore.ts
+```typescript
+interface ChronosState {
+  commits: ChronosCommit[];
+  currentCommitIndex: number;
+  isPlaying: boolean;
+  isLoading: boolean;
+  activeDiff: ChronosDiff | null;
+  simulation: ChronosSimulation | null;
+  isSimulating: boolean;
+  simulationModalOpen: boolean;
+  archaeologyRecord: ChronosArchaeologyRecord | null;
+  
+  fetchTimeline: (repoId: string) => Promise<void>;
+  scrubToIndex: (index: number) => void;
+  playTimeline: () => void;
+  pauseTimeline: () => void;
+  runSimulation: (repoId: string, nodeId: string, change: string) => Promise<void>;
+  fetchArchaeology: (repoId: string, nodeId: string) => Promise<void>;
+}
+```
+
+### omniQueryStore.ts
+```typescript
+interface OmniQueryState {
+  models: OmniQuerySchemaModel[];
+  selectedModel: OmniQuerySchemaModel | null;
+  queryPrompt: string;
+  explanation: OmniQueryExplanation | null;
+  simulation: OmniQuerySimulation | null;
+  executionHistory: OmniQueryExecutionRecord[];
+  currentStep: 'ask' | 'understand' | 'preview' | 'simulate' | 'approved' | 'executed' | 'rolled_back';
+  
+  fetchModels: (repoId: string) => Promise<void>;
+  selectModel: (model: OmniQuerySchemaModel | null) => void;
+  explainQuery: (repoId: string) => Promise<void>;
+  simulateQuery: (repoId: string) => Promise<void>;
+  executeQuery: (repoId: string) => Promise<void>;
+  resetPipeline: () => void;
+}
+```
+
+### flightStore.ts
+```typescript
+interface FlightMission {
+  id: string;
+  title: string;
+  track: 'beginner' | 'intermediate' | 'advanced';
+  difficulty: string;
+  rewardBadgeTier: string;
+  completed: boolean;
+}
+
+interface FlightState {
+  missions: FlightMission[];
+  currentMission: FlightMission | null;
+  activeSessionId: string | null;
+  terminalHistory: Array<{ command: string; output: string }>;
+  currentBranch: string;
+  gitDagState: { head: string; branches: string[] };
+  prStatus: 'draft' | 'reviewing' | 'changes_requested' | 'approved' | null;
+  ciChecks: Record<string, 'pending' | 'passed' | 'failed'>;
+  
+  fetchMissions: () => Promise<void>;
+  startSession: (missionId: string) => Promise<void>;
+  executeCommand: (cmd: string) => Promise<void>;
+  submitSimulatedPR: () => Promise<void>;
+  resolveConflict: (file: string, resolution: string) => Promise<void>;
+}
+```
+
+### telemetryStore.ts
+```typescript
+interface NodeTelemetryStat {
+  nodeId: string;
+  filePath: string;
+  activeMinutes: number;
+  locChurn: number;
+  cognitiveFrictionIndex: number;
+  frictionTier: 'low' | 'moderate' | 'high' | 'critical';
+}
+
+interface TelemetryState {
+  stats: NodeTelemetryStat[];
+  totalFocusHours: number;
+  privacyMaskEnabled: boolean;
+  selectedWindow: '24h' | '7d' | '30d';
+  
+  fetchStats: (repoId: string) => Promise<void>;
+  togglePrivacyMask: () => void;
+  setWindow: (window: '24h' | '7d' | '30d') => void;
 }
 ```
 

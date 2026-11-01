@@ -116,6 +116,17 @@ export const API_ROUTES = {
   chat: (id: string) => `/api/v1/repos/${id}/chat`,
   onboarding: (id: string) => `/api/v1/repos/${id}/onboarding`,
   webhooks: '/api/v1/webhooks/github',
+  // Chronos routes
+  chronosTimeline: (repoId: string) => `/api/v1/repos/${repoId}/chronos/timeline`,
+  chronosDiff: (repoId: string) => `/api/v1/repos/${repoId}/chronos/diff`,
+  chronosSimulate: (repoId: string) => `/api/v1/repos/${repoId}/chronos/simulate`,
+  chronosArchaeology: (repoId: string, nodeId: string) =>
+    `/api/v1/repos/${repoId}/chronos/archaeology/${nodeId}`,
+  // OmniQuery routes
+  omniQueryModels: (repoId: string) => `/api/v1/repos/${repoId}/omniquery/models`,
+  omniQueryExplain: (repoId: string) => `/api/v1/repos/${repoId}/omniquery/explain`,
+  omniQuerySimulate: (repoId: string) => `/api/v1/repos/${repoId}/omniquery/simulate`,
+  omniQueryExecute: (repoId: string) => `/api/v1/repos/${repoId}/omniquery/execute`,
 } as const;
 
 export const RATE_LIMITS = {

@@ -12,14 +12,21 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from config import settings
 from middleware import install_middleware
 from routers import (
+    achievements,
     auth,
+    badges,
     chat,
+    chronos,
+    flight_simulator,
     graph,
     ingestion,
     issues,
+    omniquery,
+    prompts,
     repos,
     search,
     summaries,
+    telemetry,
     webhooks,
 )
 
@@ -149,9 +156,16 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(repos.router, prefix=API_PREFIX)
 app.include_router(graph.router, prefix=API_PREFIX)
+app.include_router(chronos.router, prefix=API_PREFIX)
+app.include_router(omniquery.router, prefix=API_PREFIX)
 app.include_router(search.router, prefix=API_PREFIX)
 app.include_router(ingestion.router, prefix=API_PREFIX)
 app.include_router(issues.router, prefix=API_PREFIX)
 app.include_router(summaries.router, prefix=API_PREFIX)
 app.include_router(chat.router, prefix=API_PREFIX)
 app.include_router(webhooks.router, prefix=API_PREFIX)
+app.include_router(badges.router, prefix=API_PREFIX)
+app.include_router(telemetry.router, prefix=API_PREFIX)
+app.include_router(flight_simulator.router, prefix=API_PREFIX)
+app.include_router(prompts.router, prefix=API_PREFIX)
+app.include_router(achievements.router, prefix=API_PREFIX)

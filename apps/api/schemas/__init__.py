@@ -300,3 +300,136 @@ class HealthResponse(BaseModel):
     version: str
     checks: dict[str, str]
     timestamp: datetime
+
+
+# ─── Chronos (Software Time Machine) ─────────────────────────────────────────
+
+class ChronosCommitResponse(BaseModel):
+    hash: str
+    short_hash: str
+    author: str
+    author_avatar: str | None = None
+    date: str
+    message: str
+    tag: str | None = None
+    churn_added: int = 0
+    churn_deleted: int = 0
+    hotspot_score: float = 0.0
+    architectural_milestone: str | None = None
+
+
+class ChronosTimelineResponse(BaseModel):
+    commits: list[ChronosCommitResponse]
+    total: int
+    current_head: str
+
+
+class ChronosDiffResponse(BaseModel):
+    from_commit: str
+    to_commit: str
+    added_nodes: list[str] = Field(default_factory=list)
+    removed_nodes: list[str] = Field(default_factory=list)
+    modified_nodes: list[str] = Field(default_factory=list)
+    dependency_changes: list[dict[str, Any]] = Field(default_factory=list)
+    summary: str
+
+
+class ChronosSimulateRequest(BaseModel):
+    target_node_id: str
+    proposed_change: str
+
+
+class ChronosSimulationResponse(BaseModel):
+    target_node_id: str
+    target_path: str
+    proposed_change: str
+    risk_level: str
+    blast_radius_count: int
+    downstream_nodes: list[dict[str, Any]] = Field(default_factory=list)
+    impacted_endpoints: list[str] = Field(default_factory=list)
+    recommended_reviewers: list[str] = Field(default_factory=list)
+    remediation_suggestions: list[str] = Field(default_factory=list)
+
+
+class ChronosArchaeologyResponse(BaseModel):
+    node_id: str
+    node_path: str
+    created_in_commit: str
+    created_at: str
+    original_author: str
+    decision_context: str
+    linked_prs: list[dict[str, Any]] = Field(default_factory=list)
+    evolution_summary: str
+    hotspot_trend: str
+
+
+# ─── OmniQuery (Conversational Database Time Machine) ────────────────────────
+
+class OmniQuerySchemaField(BaseModel):
+    name: str
+    type: str
+    is_primary: bool = False
+    is_nullable: bool = True
+    foreign_key: str | None = None
+
+
+class OmniQuerySchemaModel(BaseModel):
+    name: str
+    table_name: str
+    file_path: str
+    fields: list[OmniQuerySchemaField] = Field(default_factory=list)
+    connected_endpoints: list[str] = Field(default_factory=list)
+
+
+class OmniQueryModelsResponse(BaseModel):
+    models: list[OmniQuerySchemaModel]
+
+
+class OmniQueryCodeDependency(BaseModel):
+    endpoint: str
+    method: str
+    path: str
+    impact: str
+
+
+class OmniQueryExplainRequest(BaseModel):
+    prompt: str
+    model_name: str | None = None
+
+
+class OmniQueryExplainResponse(BaseModel):
+    intent: str
+    operation_type: str
+    translated_sql: str
+    explanation: str
+    risk_level: str
+    estimated_affected_rows: int
+    safety_check_passed: bool
+    code_dependencies: list[OmniQueryCodeDependency] = Field(default_factory=list)
+
+
+class OmniQuerySimulateRequest(BaseModel):
+    sql: str
+    model_name: str | None = None
+
+
+class OmniQuerySimulateResponse(BaseModel):
+    success: bool
+    preview_rows: list[dict[str, Any]] = Field(default_factory=list)
+    rollback_plan: str
+    execution_time_ms: float
+    warnings: list[str] = Field(default_factory=list)
+
+
+class OmniQueryExecuteRequest(BaseModel):
+    sql: str
+    model_name: str | None = None
+    rollback_plan: str | None = None
+
+
+class OmniQueryExecuteResponse(BaseModel):
+    id: str
+    timestamp: str
+    status: str
+    affected_rows: int
+    message: str

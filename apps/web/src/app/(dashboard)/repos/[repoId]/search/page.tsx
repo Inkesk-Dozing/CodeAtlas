@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Search, MessageSquare, Loader2, FileCode, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import type { NodeMetadata } from '@/stores/graphStore';
@@ -22,9 +22,9 @@ interface ChatMessage {
 export default function SearchPage({
   params,
 }: {
-  params: { repoId: string } | Promise<{ repoId: string }>;
+  params: { repoId: string };
 }) {
-  const { repoId } = use(params as Promise<{ repoId: string }>);
+  const repoId = params?.repoId || '';
   const [mode, setMode] = useState<'search' | 'chat'>('search');
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);

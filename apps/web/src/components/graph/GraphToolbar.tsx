@@ -8,6 +8,8 @@ import {
   GitBranch,
   MessageSquare,
   AlertCircle,
+  Clock,
+  Database,
 } from 'lucide-react';
 import { useGraphStore } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -26,13 +28,15 @@ export function GraphToolbar({ repoName, refreshing = false, onRefresh }: GraphT
   const activePanel = useUIStore((s) => s.activePanel);
   const openPanel = useUIStore((s) => s.openPanel);
   const closePanel = useUIStore((s) => s.closePanel);
+  const timelineOpen = useUIStore((s) => s.timelineOpen);
+  const toggleTimeline = useUIStore((s) => s.toggleTimeline);
 
   const availableTypes = Array.from(
     new Set(rawNodes.map((n) => n.type)),
   ).sort();
 
   const handlePanelToggle = useCallback(
-    (panel: 'search' | 'issue-mapping' | 'chat') => {
+    (panel: 'search' | 'issue-mapping' | 'chat' | 'omniquery') => {
       if (activePanel === panel) {
         closePanel();
       } else {
@@ -131,6 +135,34 @@ export function GraphToolbar({ repoName, refreshing = false, onRefresh }: GraphT
       >
         <AlertCircle className="h-4 w-4" />
         <span className="hidden sm:inline">Issues</span>
+      </button>
+
+      {/* Chronos Time Machine toggle */}
+      <button
+        onClick={toggleTimeline}
+        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+          timelineOpen
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border hover:bg-muted text-muted-foreground'
+        }`}
+        title="Toggle Chronos Time Machine Slider"
+      >
+        <Clock className="h-4 w-4" />
+        <span className="hidden sm:inline">Chronos</span>
+      </button>
+
+      {/* OmniQuery Database Lens toggle */}
+      <button
+        onClick={() => handlePanelToggle('omniquery')}
+        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+          activePanel === 'omniquery'
+            ? 'border-pink-500 bg-pink-500/10 text-pink-400'
+            : 'border-border hover:bg-muted text-muted-foreground'
+        }`}
+        title="Open OmniQuery Conversational Database Lens"
+      >
+        <Database className="h-4 w-4" />
+        <span className="hidden sm:inline">OmniQuery</span>
       </button>
 
       {/* Refresh */}

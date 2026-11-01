@@ -1,18 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, use, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
 import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { GraphToolbar } from '@/components/graph/GraphToolbar';
 import { NodeDetailPanel } from '@/components/graph/panels/NodeDetailPanel';
 import { SearchPanel } from '@/components/graph/panels/SearchPanel';
 import { IssueMappingPanel } from '@/components/panels/IssueMappingPanel';
+import { ChronosTimeline } from '@/components/timeline/ChronosTimeline';
+import { OmniQueryDrawer } from '@/components/omnidrawer/OmniQueryDrawer';
 import { api } from '@/lib/api/client';
 import { useGraphStore } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
 
-export default function GraphPage({ params }: { params: { repoId: string } | Promise<{ repoId: string }> }) {
-  const { repoId } = use(params as Promise<{ repoId: string }>);
+export default function GraphPage({ params }: { params: { repoId: string } }) {
+  const repoId = params?.repoId || '';
   const [repoName, setRepoName] = useState<string>('');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,11 +129,14 @@ export default function GraphPage({ params }: { params: { repoId: string } | Pro
           )}
 
           {!isLoading && !loadError && (
-            <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
+            <div className="absolute top-3 left-3 z-10 rounded-lg border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
               {nodeCount} nodes · {edgeCount} edges
               {refreshing && <span className="ml-2 text-primary">re-analyzing…</span>}
             </div>
           )}
+
+          {/* Chronos Software Time Machine Bottom Dock */}
+          <ChronosTimeline repoId={repoId} />
         </div>
       </div>
 
@@ -153,6 +158,13 @@ export default function GraphPage({ params }: { params: { repoId: string } | Pro
         <div className="w-96 shrink-0">
           <ErrorBoundary>
             <IssueMappingPanel repoId={repoId} />
+          </ErrorBoundary>
+        </div>
+      )}
+      {rightPanelOpen && activePanel === 'omniquery' && (
+        <div className="w-[440px] shrink-0">
+          <ErrorBoundary>
+            <OmniQueryDrawer repoId={repoId} />
           </ErrorBoundary>
         </div>
       )}

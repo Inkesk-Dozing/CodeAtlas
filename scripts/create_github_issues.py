@@ -39,12 +39,12 @@ def parse_issue_files(issues_dir: str, target_phase: str | None = None) -> list[
 
             lines = block.strip().split("\n")
             title_line = lines[0]
-            # Match title
-            m_title = re.search(r"### Issue #(\d+):\s*`?([^`\n]+)`?", title_line)
+            # Match title (supports both '### Issue #001:' and '### Issue 1:')
+            m_title = re.search(r"### Issue\s*#?(\d+):\s*`?([^`\n]+)`?", title_line)
             if not m_title:
                 continue
 
-            issue_num = m_title.group(1)
+            issue_num = m_title.group(1).lstrip("0") or "0"
             raw_title = m_title.group(2).strip()
 
             labels = []
@@ -78,7 +78,7 @@ def parse_issue_files(issues_dir: str, target_phase: str | None = None) -> list[
 
             all_issues.append({
                 "number": int(issue_num),
-                "title": f"#{issue_num}: {raw_title}",
+                "title": raw_title,
                 "labels": labels,
                 "milestone": milestone,
                 "component": component,

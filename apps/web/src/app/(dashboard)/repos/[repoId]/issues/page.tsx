@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import { GitBranch, Loader2, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import { api, type CodeMapping } from '@/lib/api/client';
 
@@ -19,9 +19,9 @@ interface Issue {
 export default function IssuesPage({
   params,
 }: {
-  params: { repoId: string } | Promise<{ repoId: string }>;
+  params: { repoId: string };
 }) {
-  const { repoId } = use(params as Promise<{ repoId: string }>);
+  const repoId = params?.repoId || '';
   const [issues, setIssues] = useState<Issue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
