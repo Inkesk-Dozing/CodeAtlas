@@ -40,7 +40,7 @@ export function ChronosTimeline({ repoId }: { repoId: string }) {
 
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const nodes = useGraphStore((s) => s.nodes);
-  const selectedNode = selectedNodeId ? nodes.get(selectedNodeId) : null;
+  const _selectedNode = selectedNodeId ? nodes.get(selectedNodeId) : null;
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 

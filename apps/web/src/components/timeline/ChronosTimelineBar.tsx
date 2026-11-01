@@ -9,12 +9,9 @@ import {
   SkipForward,
   RotateCcw,
   Zap,
-  GitCommit,
   Tag,
   ChevronUp,
   ChevronDown,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import { useChronosStore } from '@/stores/chronosStore';
 import { useUIStore } from '@/stores/uiStore';

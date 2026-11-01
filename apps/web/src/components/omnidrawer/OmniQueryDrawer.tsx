@@ -16,12 +16,10 @@ import {
   ShieldAlert,
   ArrowRight,
   Code2,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 import { useOmniQueryStore } from '@/stores/omniQueryStore';
 import { useUIStore } from '@/stores/uiStore';
-import type { OmniQuerySchemaModel } from '@codeatlas/shared';
 
 interface OmniQueryDrawerProps {
   repoId: string;
