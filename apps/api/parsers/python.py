@@ -1,4 +1,8 @@
+"""Tree-sitter native Python AST parser with fallback to regex extraction."""
+
+import logging
 import re
+from typing import Any
 
 from parsers.base import (
     BaseParser,
@@ -7,6 +11,23 @@ from parsers.base import (
     ParsedSymbol,
     ParseResult,
 )
+
+logger = logging.getLogger(__name__)
+
+# Try loading tree-sitter Python grammar
+_TREE_SITTER_AVAILABLE = False
+_PY_LANGUAGE = None
+
+try:
+    import tree_sitter_python
+    from tree_sitter import Language, Parser
+
+    _PY_LANGUAGE = Language(tree_sitter_python.language())
+    _TREE_SITTER_AVAILABLE = True
+except Exception as e:
+    logger.debug(f"Tree-sitter Python grammar unavailable, using regex fallback: {e}")
+    _TREE_SITTER_AVAILABLE = False
+
 
 IMPORT_PATTERNS = [
     re.compile(r"^from\s+([\w.]+)\s+import\s+\(?\s*(.*?)\s*\)?\s*$", re.MULTILINE),
@@ -32,28 +53,378 @@ MODEL_PATTERNS = [
     re.compile(r"^model\s+(\w+)", re.MULTILINE),
 ]
 
-DECORATOR_PATTERNS = [
-    re.compile(r"@(\w+)"),
-]
-
 
 class PythonParser(BaseParser):
+    def __init__(self) -> None:
+        self.use_native = _TREE_SITTER_AVAILABLE
+        self._ts_parser: Any = None
+        if self.use_native and _PY_LANGUAGE is not None:
+            try:
+                self._ts_parser = Parser(_PY_LANGUAGE)
+            except Exception:
+                self.use_native = False
+
     def parse(self, content: str, path: str) -> ParseResult:
+        if self.use_native and self._ts_parser is not None:
+            try:
+                return self._parse_tree_sitter(content, path)
+            except Exception as e:
+                logger.warning(f"Tree-sitter parse failed for {path}, falling back to regex: {e}")
+                return self._parse_regex(content, path)
+        return self._parse_regex(content, path)
+
+    # ----------------------------------------------------------------------
+    # Tree-sitter Native Parser
+    # ----------------------------------------------------------------------
+
+    def _parse_tree_sitter(self, content: str, path: str) -> ParseResult:
+        result = ParseResult(loc=self._count_loc(content))
+        lines = content.splitlines()
+        content_bytes = content.encode("utf-8")
+        tree = self._ts_parser.parse(content_bytes)
+        root = tree.root_node
+
+        framework = self._detect_framework(content)
+        classes: list[ParsedSymbol] = []
+        functions: list[ParsedSymbol] = []
+        routes: list[ParsedRoute] = []
+        imports: list[ParsedImport] = []
+        models: list[ParsedSymbol] = []
+
+        # Recursively traverse top-level statements
+        self._traverse_node(
+            root,
+            lines,
+            framework,
+            classes,
+            functions,
+            routes,
+            imports,
+            models,
+            parent_class=None,
+        )
+
+        result.imports = imports
+        result.functions = functions
+        result.classes = classes
+        result.routes = routes
+        result.models = models
+        result.exports = [s.name for s in result.classes + result.functions if not s.name.startswith("_")]
+        result.symbols = result.functions + result.classes + result.models
+
+        return result
+
+    def _traverse_node(
+        self,
+        node: Any,
+        lines: list[str],
+        framework: str,
+        classes: list[ParsedSymbol],
+        functions: list[ParsedSymbol],
+        routes: list[ParsedRoute],
+        imports: list[ParsedImport],
+        models: list[ParsedSymbol],
+        parent_class: str | None = None,
+    ) -> None:
+        for child in node.children:
+            ntype = child.type
+
+            if ntype in ("import_statement", "import_from_statement"):
+                self._handle_import_node(child, imports)
+
+            elif ntype == "function_definition":
+                self._handle_function_node(child, lines, framework, functions, routes, decorators=[], parent_class=parent_class)
+
+            elif ntype == "decorated_definition":
+                self._handle_decorated_node(child, lines, framework, classes, functions, routes, models, parent_class=parent_class)
+
+            elif ntype == "class_definition":
+                self._handle_class_node(child, lines, framework, classes, functions, routes, models, decorators=[])
+
+            elif ntype == "expression_statement":
+                # Check for django path(...) route definitions
+                self._check_expression_route(child, framework, routes)
+
+    def _handle_import_node(self, node: Any, imports: list[ParsedImport]) -> None:
+        line_num = node.start_point[0] + 1
+        if node.type == "import_statement":
+            # e.g. import os, sys as s
+            for child in node.children:
+                if child.type == "dotted_name":
+                    imports.append(ParsedImport(source=child.text.decode("utf-8"), line=line_num))
+                elif child.type == "aliased_import":
+                    orig = child.child_by_field_name("name")
+                    if orig:
+                        imports.append(ParsedImport(source=orig.text.decode("utf-8"), line=line_num))
+        elif node.type == "import_from_statement":
+            # e.g. from fastapi import APIRouter, Depends as dep
+            module_node = node.child_by_field_name("module_name")
+            if not module_node:
+                # Fallback to finding dotted_name or relative_import before 'import'
+                for c in node.children:
+                    if c.type in ("dotted_name", "relative_import"):
+                        module_node = c
+                        break
+            source = module_node.text.decode("utf-8") if module_node else ""
+            names: list[str] = []
+            for c in node.children:
+                if c.type == "dotted_name" and c != module_node:
+                    names.append(c.text.decode("utf-8"))
+                elif c.type == "aliased_import":
+                    orig = c.child_by_field_name("name")
+                    if orig:
+                        names.append(orig.text.decode("utf-8"))
+                elif c.type == "identifier":
+                    names.append(c.text.decode("utf-8"))
+            if source:
+                imports.append(ParsedImport(source=source, names=names, line=line_num))
+
+    def _handle_function_node(
+        self,
+        node: Any,
+        lines: list[str],
+        framework: str,
+        functions: list[ParsedSymbol],
+        routes: list[ParsedRoute],
+        decorators: list[str],
+        parent_class: str | None = None,
+    ) -> None:
+        name_node = node.child_by_field_name("name")
+        if not name_node:
+            return
+        name = name_node.text.decode("utf-8")
+
+        if name.startswith("_") and name != "__init__":
+            return
+
+        line_num = node.start_point[0] + 1
+        end_line = node.end_point[0] + 1
+
+        # Check async
+        is_async = any(c.type == "async" for c in node.children)
+
+        # Extract parameters
+        params: list[str] = []
+        param_node = node.child_by_field_name("parameters")
+        if param_node:
+            for p in param_node.children:
+                if p.type in ("identifier", "typed_parameter", "default_parameter", "typed_default_parameter"):
+                    p_name = p.child_by_field_name("name")
+                    if p_name:
+                        params.append(p_name.text.decode("utf-8"))
+                    elif p.type == "identifier":
+                        params.append(p.text.decode("utf-8"))
+                    elif p.children and p.children[0].type == "identifier":
+                        params.append(p.children[0].text.decode("utf-8"))
+
+        docstring = self._extract_node_docstring(node)
+
+        # Check routes
+        is_route = False
+        for dec in decorators:
+            dec_clean = dec.strip("@")
+            if any(dec_clean.startswith(prefix) for prefix in ("app.", "router.", "api.", "route")):
+                is_route = True
+                route_match = re.search(r"\.(get|post|put|delete|patch|route)\s*\(\s*['\"]([^'\"]+)['\"]", dec_clean)
+                if route_match:
+                    method = route_match.group(1).upper()
+                    if method == "ROUTE":
+                        method = "GET"
+                    path = route_match.group(2)
+                    routes.append(ParsedRoute(
+                        method=method,
+                        path=path,
+                        handler=name,
+                        framework=framework,
+                        line=line_num,
+                    ))
+
+        functions.append(ParsedSymbol(
+            name=name,
+            kind="function",
+            line=line_num,
+            end_line=end_line,
+            signature=f"{name}({', '.join(params)})",
+            docstring=docstring,
+            is_async=is_async,
+            parent=parent_class,
+            metadata={"decorators": decorators, "params": params, "is_route": is_route},
+        ))
+
+    def _handle_decorated_node(
+        self,
+        node: Any,
+        lines: list[str],
+        framework: str,
+        classes: list[ParsedSymbol],
+        functions: list[ParsedSymbol],
+        routes: list[ParsedRoute],
+        models: list[ParsedSymbol],
+        parent_class: str | None = None,
+    ) -> None:
+        decorators: list[str] = []
+        target_node = None
+
+        for child in node.children:
+            if child.type == "decorator":
+                # Decorator text e.g. @router.get('/users')
+                dec_text = child.text.decode("utf-8").strip()
+                if dec_text.startswith("@"):
+                    decorators.append(dec_text[1:])
+                else:
+                    decorators.append(dec_text)
+            elif child.type in ("function_definition", "class_definition"):
+                target_node = child
+
+        if not target_node:
+            return
+
+        if target_node.type == "function_definition":
+            self._handle_function_node(target_node, lines, framework, functions, routes, decorators, parent_class=parent_class)
+        elif target_node.type == "class_definition":
+            self._handle_class_node(target_node, lines, framework, classes, functions, routes, models, decorators)
+
+    def _handle_class_node(
+        self,
+        node: Any,
+        lines: list[str],
+        framework: str,
+        classes: list[ParsedSymbol],
+        functions: list[ParsedSymbol],
+        routes: list[ParsedRoute],
+        models: list[ParsedSymbol],
+        decorators: list[str],
+    ) -> None:
+        name_node = node.child_by_field_name("name")
+        if not name_node:
+            return
+        name = name_node.text.decode("utf-8")
+
+        line_num = node.start_point[0] + 1
+        end_line = node.end_point[0] + 1
+
+        # Superclasses/bases
+        bases: list[str] = []
+        superclasses_node = node.child_by_field_name("superclasses")
+        if superclasses_node:
+            for child in superclasses_node.children:
+                if child.type in ("identifier", "attribute"):
+                    bases.append(child.text.decode("utf-8"))
+
+        docstring = self._extract_node_docstring(node)
+
+        # Check methods in class body
+        methods: list[str] = []
+        body_node = node.child_by_field_name("body")
+        fields: list[str] = []
+
+        if body_node:
+            for item in body_node.children:
+                if item.type == "function_definition":
+                    m_name_node = item.child_by_field_name("name")
+                    if m_name_node:
+                        m_name = m_name_node.text.decode("utf-8")
+                        if not m_name.startswith("__") or m_name == "__init__":
+                            methods.append(m_name)
+                    # Also collect class methods as functions with parent
+                    self._handle_function_node(item, lines, framework, functions, routes, decorators=[], parent_class=name)
+                elif item.type == "decorated_definition":
+                    for sub in item.children:
+                        if sub.type == "function_definition":
+                            m_name_node = sub.child_by_field_name("name")
+                            if m_name_node:
+                                m_name = m_name_node.text.decode("utf-8")
+                                if not m_name.startswith("__") or m_name == "__init__":
+                                    methods.append(m_name)
+                    self._handle_decorated_node(item, lines, framework, classes, functions, routes, models, parent_class=name)
+                elif item.type == "expression_statement":
+                    # Check for ORM columns: e.g. name = Column(String)
+                    stmt_text = item.text.decode("utf-8")
+                    f_match = re.search(r"(\w+)\s*=\s*(?:db\.Column|Column|Mapped|Mapped\[)", stmt_text)
+                    if f_match:
+                        fields.append(f_match.group(1))
+
+        is_service = any(
+            d.split("(")[0] in ("service", "Service", "injectable", "component", "Component", "router", "Router", "APIRouter")
+            for d in decorators
+        )
+
+        is_model = any(
+            b in ("models.Model", "Model", "Base", "db.Model") or "model" in b.lower()
+            for b in bases
+        ) or bool(fields)
+
+        if is_model:
+            models.append(ParsedSymbol(
+                name=name,
+                kind="model",
+                line=line_num,
+                end_line=end_line,
+                metadata={"fields": fields, "bases": bases},
+            ))
+
+        classes.append(ParsedSymbol(
+            name=name,
+            kind="class",
+            line=line_num,
+            end_line=end_line,
+            docstring=docstring,
+            is_exported=not name.startswith("_"),
+            metadata={
+                "bases": bases,
+                "decorators": decorators,
+                "methods": methods,
+                "is_service": is_service,
+            },
+        ))
+
+    def _check_expression_route(self, node: Any, framework: str, routes: list[ParsedRoute]) -> None:
+        expr_text = node.text.decode("utf-8")
+        match = re.search(r"path\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*(\w+)", expr_text)
+        if match:
+            routes.append(ParsedRoute(
+                method="GET",
+                path=match.group(1),
+                handler=match.group(2),
+                framework=framework,
+                line=node.start_point[0] + 1,
+            ))
+
+    def _extract_node_docstring(self, node: Any) -> str | None:
+        body = node.child_by_field_name("body")
+        if not body or not body.children:
+            return None
+        first_stmt = body.children[0]
+        if first_stmt.type == "expression_statement" and first_stmt.children:
+            str_child = first_stmt.children[0]
+            if str_child.type == "string":
+                val = str_child.text.decode("utf-8")
+                # Strip triple or single quotes
+                val = re.sub(r'^(?:"""|\'\'\'|"|\')', "", val)
+                val = re.sub(r'(?:"""|\'\'\'|"|\')$', "", val)
+                return val.strip()
+        return None
+
+    # ----------------------------------------------------------------------
+    # Regex Fallback Parser
+    # ----------------------------------------------------------------------
+
+    def _parse_regex(self, content: str, path: str) -> ParseResult:
         result = ParseResult(loc=self._count_loc(content))
         lines = content.splitlines()
 
-        result.imports = self._extract_imports(content)
-        result.functions = self._extract_functions(content, lines)
-        result.classes = self._extract_classes(content, lines)
-        result.routes = self._extract_routes(content, lines)
-        result.models = self._extract_models(content, lines)
+        result.imports = self._extract_imports_regex(content)
+        result.functions = self._extract_functions_regex(content, lines)
+        result.classes = self._extract_classes_regex(content, lines)
+        result.routes = self._extract_routes_regex(content, lines)
+        result.models = self._extract_models_regex(content, lines)
         result.exports = [s.name for s in result.classes + result.functions if not s.name.startswith("_")]
 
         result.symbols = result.functions + result.classes + result.models
 
         return result
 
-    def _extract_imports(self, content: str) -> list[ParsedImport]:
+    def _extract_imports_regex(self, content: str) -> list[ParsedImport]:
         imports = []
         from_pattern, plain_pattern = IMPORT_PATTERNS
 
@@ -72,7 +443,7 @@ class PythonParser(BaseParser):
 
         return imports
 
-    def _extract_functions(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
+    def _extract_functions_regex(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
         functions = []
         for pattern in FUNCTION_PATTERNS:
             for match in pattern.finditer(content):
@@ -101,7 +472,7 @@ class PythonParser(BaseParser):
                 ))
         return functions
 
-    def _extract_classes(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
+    def _extract_classes_regex(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
         classes = []
         for pattern in CLASS_PATTERNS:
             for match in pattern.finditer(content):
@@ -143,7 +514,7 @@ class PythonParser(BaseParser):
                 ))
         return classes
 
-    def _extract_routes(self, content: str, lines: list[str]) -> list[ParsedRoute]:
+    def _extract_routes_regex(self, content: str, lines: list[str]) -> list[ParsedRoute]:
         routes = []
         framework = self._detect_framework(content)
 
@@ -173,7 +544,7 @@ class PythonParser(BaseParser):
                 ))
         return routes
 
-    def _extract_models(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
+    def _extract_models_regex(self, content: str, lines: list[str]) -> list[ParsedSymbol]:
         models = []
         for pattern in MODEL_PATTERNS:
             for match in pattern.finditer(content):
