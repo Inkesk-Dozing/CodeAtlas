@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import traceback
 from datetime import UTC
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import AsyncSessionLocal
-from models import CodeEdge, CodeNode, IngestionTask, Repository
+from models import CodeEdge, CodeNode, IngestionError, IngestionTask, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -139,13 +140,39 @@ async def run_ingestion_pipeline(
 
         except Exception as e:
             logger.exception("Ingestion failed: task=%s", task_id)
+            err_msg = str(e)
+            tb_str = traceback.format_exc()
+
+            # Record failure in task
             task.status = "failed"
-            task.error = str(e)
+            task.error = err_msg
             task.error_stage = task.current_stage
             task.stage_timings = stage_timings
             task.completed_at = _utcnow()
-            repo.status = "error"
-            repo.error_message = str(e)
+
+            # Two-phase commit rollback: preserve previous active graph if one existed
+            # If repo already had nodes, it remains functional in degraded state
+            if repo.node_count > 0:
+                repo.status = "ready"
+            else:
+                repo.status = "error"
+            repo.error_message = err_msg
+
+            # Log root-cause error trace to ingestion_errors table
+            error_log = IngestionError(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                error_stage=task.current_stage or "unknown",
+                error_message=err_msg,
+                traceback=tb_str,
+                details={
+                    "stage": task.current_stage,
+                    "progress": cumulative,
+                    "files_total": task.files_total,
+                },
+            )
+            db.add(error_log)
+
             await db.commit()
             raise
 
@@ -173,10 +200,9 @@ async def _clone_repository(repo: Repository, branch: str | None) -> list[dict[s
         repo_path = tmp_dir / "repo"
         files = _scan_files(repo_path, repo.settings.get("ignored_paths", []))
         return files
-    except Exception:
+    finally:
         import shutil
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise
 
 
 def _scan_files(base_path: Path, ignored_patterns: list[str]) -> list[dict[str, Any]]:
