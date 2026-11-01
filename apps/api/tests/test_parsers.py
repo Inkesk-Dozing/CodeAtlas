@@ -327,3 +327,56 @@ class TestRustParser:
         assert "/items" in paths
 
 
+class TestTreeSitterNativeAccuracy:
+    def test_tree_sitter_python_ignores_comments_and_strings(self):
+        code = '''
+# def fake_in_comment(): pass
+x = "def fake_in_string(): pass"
+"""
+def fake_in_docstring(): pass
+"""
+
+def real_function(a, b: int = 10) -> int:
+    """This is a real docstring."""
+    return a + b
+'''
+        parser = PythonParser()
+        res = parser.parse(code, "test.py")
+        fn_names = [f.name for f in res.functions]
+        assert "real_function" in fn_names
+        assert "fake_in_comment" not in fn_names
+        assert "fake_in_string" not in fn_names
+        assert "fake_in_docstring" not in fn_names
+
+        real_fn = next(f for f in res.functions if f.name == "real_function")
+        assert real_fn.docstring == "This is a real docstring."
+
+    def test_tree_sitter_javascript_ignores_comments_and_strings(self):
+        code = '''
+// function fakeComment() {}
+/*
+export function fakeBlockComment() {}
+*/
+const msg = "function fakeString() {}";
+
+export function RealComponent({ id, count = 0 }: Props) {
+    const [state, setState] = useState(0);
+    return <div><ChildComponent /></div>;
+}
+'''
+        parser = JavaScriptParser()
+        res = parser.parse(code, "test.tsx")
+        fn_names = [f.name for f in res.functions]
+        assert "RealComponent" in fn_names
+        assert "fakeComment" not in fn_names
+        assert "fakeBlockComment" not in fn_names
+        assert "fakeString" not in fn_names
+
+        comp_names = [c.name for c in res.components]
+        assert "RealComponent" in comp_names
+        real_comp = next(c for c in res.components if c.name == "RealComponent")
+        assert "ChildComponent" in real_comp.metadata.get("renders", [])
+        assert "useState" in real_comp.metadata.get("hooks_used", [])
+
+
+
