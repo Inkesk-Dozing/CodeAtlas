@@ -148,6 +148,7 @@ erDiagram
 
 ### Issue 19: Shallow Repository Cloner with GitHub Installation Token & Sparse Checkout
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P0-critical`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #23](https://github.com/Inkesk-Dozing/CodeAtlas/issues/23)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/cloner.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -167,6 +168,7 @@ erDiagram
 
 ### Issue 20: Base AST Parser Framework & Multi-Language Dispatch Registry
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P0-critical`, `component:parsers`, `status:completed`
+- **GitHub Tracking**: [Issue #24](https://github.com/Inkesk-Dozing/CodeAtlas/issues/24)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/base.py`, `apps/api/parsers/__init__.py`
 - **Existing Implementation**: [apps/api/parsers/base.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/parsers/base.py)
@@ -185,6 +187,7 @@ erDiagram
 
 ### Issue 21: JavaScript & TypeScript AST Parser Engine
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P0-critical`, `component:parsers`, `status:completed`
+- **GitHub Tracking**: [Issue #25](https://github.com/Inkesk-Dozing/CodeAtlas/issues/25)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/javascript.py`
 - **Existing Implementation**: [apps/api/parsers/javascript.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/parsers/javascript.py)
@@ -204,6 +207,7 @@ erDiagram
 
 ### Issue 22: Python AST Parser Engine with Decorator & Type Hint Analysis
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P0-critical`, `component:parsers`, `status:completed`
+- **GitHub Tracking**: [Issue #26](https://github.com/Inkesk-Dozing/CodeAtlas/issues/26)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/python.py`
 - **Existing Implementation**: [apps/api/parsers/python.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/parsers/python.py)
@@ -223,6 +227,7 @@ erDiagram
 
 ### Issue 23: Go Language AST Parser Integration (Packages, Structs & Interfaces)
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P2-medium`, `component:parsers`, `status:ready`
+- **GitHub Tracking**: [Issue #27](https://github.com/Inkesk-Dozing/CodeAtlas/issues/27)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/golang.py`
 - **Problem Statement**:
@@ -241,6 +246,7 @@ erDiagram
 
 ### Issue 24: Rust Language AST Parser Integration (Crates, Traits & Implementations)
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P2-medium`, `component:parsers`, `status:ready`
+- **GitHub Tracking**: [Issue #28](https://github.com/Inkesk-Dozing/CodeAtlas/issues/28)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/rust.py`
 - **Problem Statement**:
@@ -259,6 +265,7 @@ erDiagram
 
 ### Issue 25: API Route Extraction Engine for Express, FastAPI, Next.js & Spring
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #29](https://github.com/Inkesk-Dozing/CodeAtlas/issues/29)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/route_extractor.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -279,6 +286,7 @@ erDiagram
 
 ### Issue 26: React/Vue Component & Hook Hierarchy Extraction
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #30](https://github.com/Inkesk-Dozing/CodeAtlas/issues/30)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/component_extractor.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -298,6 +306,7 @@ erDiagram
 
 ### Issue 27: Database ORM Model Extraction (Prisma, SQLAlchemy, Django ORM)
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #31](https://github.com/Inkesk-Dozing/CodeAtlas/issues/31)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/model_extractor.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -317,6 +326,7 @@ erDiagram
 
 ### Issue 28: Graph Persistence Layer with High-Speed PostgreSQL Batch Upsert
 - **Labels**: `phase:phase-1-ingestion`, `type:performance`, `priority:P0-critical`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #32](https://github.com/Inkesk-Dozing/CodeAtlas/issues/32)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/graph_persister.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -336,6 +346,7 @@ erDiagram
 
 ### Issue 29: Vector Embeddings Generation Pipeline with Local Ollama Inference
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P0-critical`, `component:ai-rag`, `status:completed`
+- **GitHub Tracking**: [Issue #33](https://github.com/Inkesk-Dozing/CodeAtlas/issues/33)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ai/embedder.py`
 - **Existing Implementation**: [apps/api/services/ai/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ai/)
@@ -355,6 +366,7 @@ erDiagram
 
 ### Issue 30: pgvector HNSW Index Configuration & Fast Cosine Distance Queries
 - **Labels**: `phase:phase-1-ingestion`, `type:performance`, `priority:P0-critical`, `component:vector-db`, `status:completed`
+- **GitHub Tracking**: [Issue #34](https://github.com/Inkesk-Dozing/CodeAtlas/issues/34)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/migrations/0001_initial.py`, `apps/api/services/mapping/`
 - **Existing Implementation**: [apps/api/migrations/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/migrations/)
@@ -373,6 +385,7 @@ erDiagram
 
 ### Issue 31: Incremental Git Diff Parser for Push Webhook Re-Indexing
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #35](https://github.com/Inkesk-Dozing/CodeAtlas/issues/35)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/incremental.py`
 - **Existing Implementation**: [apps/api/services/ingestion/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/ingestion/)
@@ -393,6 +406,7 @@ erDiagram
 
 ### Issue 32: Real-Time Ingestion Pipeline Progress Tracking via WebSocket & REST API
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #36](https://github.com/Inkesk-Dozing/CodeAtlas/issues/36)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/routers/ingestion.py`
 - **Existing Implementation**: [apps/api/routers/ingestion.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/routers/ingestion.py)
@@ -411,6 +425,7 @@ erDiagram
 
 ### Issue 33: Celery Ingestion Worker Memory Leak Remediation & Process Recycling
 - **Labels**: `phase:phase-1-ingestion`, `type:performance`, `priority:P1-high`, `component:ingestion-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #37](https://github.com/Inkesk-Dozing/CodeAtlas/issues/37)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/tasks/ingestion_tasks.py`
 - **Existing Implementation**: [apps/api/tasks/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/tasks/)
@@ -429,6 +444,7 @@ erDiagram
 
 ### Issue 34: Monorepo Workspace Package Boundary & Circular Dependency Detector
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:ingestion-engine`, `status:ready`
+- **GitHub Tracking**: [Issue #38](https://github.com/Inkesk-Dozing/CodeAtlas/issues/38)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/monorepo_analyzer.py`
 - **Problem Statement**:
@@ -447,6 +463,7 @@ erDiagram
 
 ### Issue 35: Tree-sitter Native Parser Integration (Upgrading from Regex)
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P1-high`, `component:parsers`, `status:ready`
+- **GitHub Tracking**: [Issue #39](https://github.com/Inkesk-Dozing/CodeAtlas/issues/39)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/parsers/treesitter/`
 - **Problem Statement**:
@@ -464,6 +481,7 @@ erDiagram
 
 ### Issue 36: CodeNode & CodeEdge Composite Index Optimization for Subgraph Traversal
 - **Labels**: `phase:phase-1-ingestion`, `type:performance`, `priority:P1-high`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #40](https://github.com/Inkesk-Dozing/CodeAtlas/issues/40)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/migrations/`
 - **Existing Implementation**: [apps/api/migrations/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/migrations/)
@@ -483,6 +501,7 @@ erDiagram
 
 ### Issue 37: Repository Health Check & Ingestion Failure Rollback Mechanism
 - **Labels**: `phase:phase-1-ingestion`, `type:feature`, `priority:P2-medium`, `component:ingestion-engine`, `status:ready`
+- **GitHub Tracking**: [Issue #41](https://github.com/Inkesk-Dozing/CodeAtlas/issues/41)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/services/ingestion/pipeline.py`
 - **Problem Statement**:
@@ -501,6 +520,7 @@ erDiagram
 
 ### Issue 38: Synthetic Golden Monorepo Fixture & Parser Test Suite
 - **Labels**: `phase:phase-1-ingestion`, `type:test`, `priority:P1-high`, `component:parsers`, `status:completed`
+- **GitHub Tracking**: [Issue #42](https://github.com/Inkesk-Dozing/CodeAtlas/issues/42)
 - **Milestone**: `M1: Ingestion`
 - **Component**: `apps/api/tests/fixtures/`, `apps/api/tests/test_parsers.py`
 - **Existing Implementation**: [apps/api/tests/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/tests/)

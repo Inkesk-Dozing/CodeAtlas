@@ -112,6 +112,7 @@ stateDiagram-v2
 
 ### Issue 39: React Flow Canvas Initialization with Custom AST Node Renderers
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P0-critical`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #43](https://github.com/Inkesk-Dozing/CodeAtlas/issues/43)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/graph/`, `apps/web/src/components/graph/CustomNodes.tsx`
 - **Existing Implementation**: [apps/web/src/components/graph/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/components/graph/)
@@ -135,6 +136,7 @@ stateDiagram-v2
 
 ### Issue 40: Typed Edge Rendering with Animated Data Flow & Relationship Colors
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P1-high`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #44](https://github.com/Inkesk-Dozing/CodeAtlas/issues/44)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/graph/CustomEdges.tsx`
 - **Existing Implementation**: [apps/web/src/components/graph/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/components/graph/)
@@ -156,6 +158,7 @@ stateDiagram-v2
 
 ### Issue 41: Dagre Hierarchical Layered Layout & BFS Depth Calculation Engine
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P0-critical`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #45](https://github.com/Inkesk-Dozing/CodeAtlas/issues/45)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/lib/layout.ts`
 - **Existing Implementation**: [apps/web/src/lib/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/lib/)
@@ -175,6 +178,7 @@ stateDiagram-v2
 
 ### Issue 42: Canvas Node Virtualization for 2,000+ Nodes at 60 FPS
 - **Labels**: `phase:phase-2-mapping`, `type:performance`, `priority:P1-high`, `component:apps/web`, `status:ready`
+- **GitHub Tracking**: [Issue #46](https://github.com/Inkesk-Dozing/CodeAtlas/issues/46)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/graph/CanvasVirtualizer.tsx`
 - **Problem Statement**:
@@ -193,6 +197,7 @@ stateDiagram-v2
 
 ### Issue 43: Collapsible Directory & Monorepo Package Clustering
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P1-high`, `component:apps/web`, `status:ready`
+- **GitHub Tracking**: [Issue #47](https://github.com/Inkesk-Dozing/CodeAtlas/issues/47)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/graph/ClusterGroup.tsx`
 - **Problem Statement**:
@@ -211,6 +216,7 @@ stateDiagram-v2
 
 ### Issue 44: Subgraph Exploration & Neighborhood Extraction API
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #48](https://github.com/Inkesk-Dozing/CodeAtlas/issues/48)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/routers/graph.py`
 - **Existing Implementation**: [apps/api/routers/graph.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/routers/graph.py)
@@ -230,6 +236,7 @@ stateDiagram-v2
 
 ### Issue 45: Interactive Canvas Navigation Controls, Minimap & Center-on-Node
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P1-high`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #49](https://github.com/Inkesk-Dozing/CodeAtlas/issues/49)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/graph/GraphControls.tsx`
 - **Existing Implementation**: [apps/web/src/components/graph/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/components/graph/)
@@ -249,6 +256,7 @@ stateDiagram-v2
 
 ### Issue 46: GitHub Issues Fetcher Service with GraphQL Pagination & Comment Threads
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #50](https://github.com/Inkesk-Dozing/CodeAtlas/issues/50)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/routers/issues.py`, `apps/api/services/mapping/`
 - **Existing Implementation**: [apps/api/routers/issues.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/routers/issues.py)
@@ -268,6 +276,7 @@ stateDiagram-v2
 
 ### Issue 47: Issue Text Preprocessor (Code Block Extraction, Stack Traces & Symbols)
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P1-high`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #51](https://github.com/Inkesk-Dozing/CodeAtlas/issues/51)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/preprocessor.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -289,6 +298,7 @@ stateDiagram-v2
 
 ### Issue 48: Issue Intent Classifier (Bug, Feature, Refactor, Security, Docs)
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P1-high`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #52](https://github.com/Inkesk-Dozing/CodeAtlas/issues/52)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/classifier.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -309,6 +319,7 @@ stateDiagram-v2
 
 ### Issue 49: Signal 1 - Semantic Issue Candidate Retrieval via pgvector Cosine Distance
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #53](https://github.com/Inkesk-Dozing/CodeAtlas/issues/53)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/semantic_ranker.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -328,6 +339,7 @@ stateDiagram-v2
 
 ### Issue 50: Signal 2 - Structural Heuristic Matcher via Trigram & Exact Symbol Match
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #54](https://github.com/Inkesk-Dozing/CodeAtlas/issues/54)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/structural_ranker.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -346,6 +358,7 @@ stateDiagram-v2
 
 ### Issue 51: Signal 3 - Topological 1-Hop Graph Neighbor Propagation Algorithm
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #55](https://github.com/Inkesk-Dozing/CodeAtlas/issues/55)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/topological_ranker.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -364,6 +377,7 @@ stateDiagram-v2
 
 ### Issue 52: Signal 4 - Historical Reviewer Feedback Weighting
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P1-high`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #56](https://github.com/Inkesk-Dozing/CodeAtlas/issues/56)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/historical_ranker.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -383,6 +397,7 @@ stateDiagram-v2
 
 ### Issue 53: Signal 5 - Hotspot Degree Centrality Prioritization
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P1-high`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #57](https://github.com/Inkesk-Dozing/CodeAtlas/issues/57)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/hotspot_ranker.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -401,6 +416,7 @@ stateDiagram-v2
 
 ### Issue 54: 5-Signal Combined Confidence Calibration & Tier Assignment (High/Med/Low)
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:mapping-engine`, `status:completed`
+- **GitHub Tracking**: [Issue #58](https://github.com/Inkesk-Dozing/CodeAtlas/issues/58)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/services/mapping/calibrator.py`
 - **Existing Implementation**: [apps/api/services/mapping/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/services/mapping/)
@@ -423,6 +439,7 @@ stateDiagram-v2
 
 ### Issue 55: Issue Detail Sidebar with Highlighting & Suggested Action Reasoning
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P0-critical`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #59](https://github.com/Inkesk-Dozing/CodeAtlas/issues/59)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/panels/IssueMappingPanel.tsx`
 - **Existing Implementation**: [apps/web/src/components/panels/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/components/panels/)
@@ -445,6 +462,7 @@ stateDiagram-v2
 
 ### Issue 56: Node Detail Inspector Drawer (Source Preview, Relationships & Complexity)
 - **Labels**: `phase:phase-2-mapping`, `type:frontend`, `priority:P1-high`, `component:apps/web`, `status:completed`
+- **GitHub Tracking**: [Issue #60](https://github.com/Inkesk-Dozing/CodeAtlas/issues/60)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/web/src/components/panels/NodeDetailPanel.tsx`
 - **Existing Implementation**: [apps/web/src/components/panels/](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/web/src/components/panels/)
@@ -466,6 +484,7 @@ stateDiagram-v2
 
 ### Issue 57: Hybrid Natural Language Search API & Real-Time Query UI
 - **Labels**: `phase:phase-2-mapping`, `type:feature`, `priority:P0-critical`, `component:apps/api`, `status:completed`
+- **GitHub Tracking**: [Issue #61](https://github.com/Inkesk-Dozing/CodeAtlas/issues/61)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/routers/search.py`, `apps/web/src/components/panels/SearchPanel.tsx`
 - **Existing Implementation**: [apps/api/routers/search.py](file:///C:/Users/USER/Desktop/Extras/pending-projects/CodeAtlas/apps/api/routers/search.py)
@@ -486,6 +505,7 @@ stateDiagram-v2
 
 ### Issue 58: Issue Mapping Golden Set Accuracy Evaluation Suite
 - **Labels**: `phase:phase-2-mapping`, `type:test`, `priority:P1-high`, `component:mapping-engine`, `status:ready`
+- **GitHub Tracking**: [Issue #62](https://github.com/Inkesk-Dozing/CodeAtlas/issues/62)
 - **Milestone**: `M2: Issue Mapping`
 - **Component**: `apps/api/tests/eval/issue_mapping_eval.py`
 - **Problem Statement**:
