@@ -73,7 +73,11 @@ class User(Base, TimestampMixin):
     settings: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    memberships: Mapped[list["OrgMember"]] = relationship(back_populates="user", lazy="selectin")
+    memberships: Mapped[list["OrgMember"]] = relationship(
+        back_populates="user",
+        lazy="selectin",
+        foreign_keys="OrgMember.user_id",
+    )
 
 
 class OrgMember(Base):
@@ -94,7 +98,10 @@ class OrgMember(Base):
     )
 
     org: Mapped["Organization"] = relationship(back_populates="members")
-    user: Mapped["User"] = relationship(back_populates="memberships")
+    user: Mapped["User"] = relationship(
+        back_populates="memberships",
+        foreign_keys=[user_id],
+    )
 
 
 class GitHubInstallation(Base, TimestampMixin):
@@ -370,3 +377,23 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+class IngestionError(Base):
+    __tablename__ = "ingestion_errors"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    repo_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    task_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("ingestion_tasks.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    error_stage: Mapped[str | None] = mapped_column(String(50))
+    error_message: Mapped[str] = mapped_column(Text, nullable=False)
+    traceback: Mapped[str | None] = mapped_column(Text)
+    details: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+

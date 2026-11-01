@@ -176,24 +176,47 @@ class IngestionTrigger(BaseModel):
     force: bool = False
 
 
-class IngestionStatusResponse(BaseModel):
+class IngestionStatusResponse(ORMModel):
     id: str
     repo_id: str
-    mode: str
+    mode: str = "full"
+    status: str = "queued"
+    current_stage: str | None = None
+    progress: int = 0
+    branch: str | None = None
+    commit_sha: str | None = None
+    files_total: int = 0
+    files_processed: int = 0
+    nodes_created: int = 0
+    edges_created: int = 0
+    error: str | None = None
+    stage_timings: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class IngestionErrorResponse(BaseModel):
+    id: str
+    repo_id: str
+    task_id: str | None = None
+    error_stage: str | None = None
+    error_message: str
+    traceback: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+
+class RepositoryHealthResponse(BaseModel):
+    repo_id: str
     status: str
-    current_stage: str | None
-    progress: int
-    branch: str | None
-    commit_sha: str | None
-    files_total: int
-    files_processed: int
-    nodes_created: int
-    edges_created: int
-    error: str | None
-    stage_timings: dict[str, Any]
-    started_at: datetime | None
-    completed_at: datetime | None
-    created_at: datetime
+    health: str
+    node_count: int
+    edge_count: int
+    last_analyzed_at: datetime | None
+    active_graph_valid: bool
+    recent_errors: list[IngestionErrorResponse] = Field(default_factory=list)
+
 
 
 # ─── Issue Mapping ───────────────────────────────────────────────────────────
