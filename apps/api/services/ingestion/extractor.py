@@ -194,12 +194,24 @@ class GraphExtractor:
                 continue
 
             path = f["path"]
+            # Link methods to their parent struct or class
+            for fn in parsed.functions:
+                parent_struct = fn.metadata.get("receiver") or (fn.parent if fn.kind == "method" else None)
+                if parent_struct:
+                    method_key = f"{path}::{fn.name}::function"
+                    struct_key = f"{path}::{parent_struct}::class"
+                    self._add_edge(struct_key, method_key, "declares_method")
+
             for cls in parsed.classes:
                 source_key = f"{path}::{cls.name}::class"
                 extends = cls.metadata.get("extends")
                 if extends:
                     target_key = f"{path}::{extends}::class"
                     self._add_edge(source_key, target_key, "extends")
+
+                for embedded in cls.metadata.get("embedded", []):
+                    target_key = f"{path}::{embedded}::class"
+                    self._add_edge(source_key, target_key, "embeds")
 
                 for impl in cls.metadata.get("implements", []):
                     target_key = f"{path}::{impl}::interface"

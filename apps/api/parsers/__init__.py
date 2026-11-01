@@ -1,4 +1,5 @@
 from parsers.base import BaseParser, ParseResult
+from parsers.golang import GoParser
 from parsers.javascript import JavaScriptParser
 from parsers.python import PythonParser
 
@@ -13,6 +14,8 @@ def get_parser(language: str) -> BaseParser | None:
         parser = JavaScriptParser(language)
     elif language == "python":
         parser = PythonParser()
+    elif language in ("go", "golang"):
+        parser = GoParser()
     else:
         return None
 
@@ -20,4 +23,4 @@ def get_parser(language: str) -> BaseParser | None:
     return parser
 
 
-__all__ = ["BaseParser", "ParseResult", "get_parser"]
+__all__ = ["BaseParser", "GoParser", "ParseResult", "get_parser"]
