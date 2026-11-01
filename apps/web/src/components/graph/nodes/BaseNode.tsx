@@ -1,20 +1,34 @@
 'use client';
 
 import { memo } from 'react';
-import type { NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { GraphNode } from '@/stores/graphStore';
 import { NODE_TYPE_COLORS } from '@codeatlas/shared';
 
-interface BaseNodeData {
+export interface BaseNodeData {
   node: GraphNode;
   isSelected: boolean;
   isHighlighted: boolean;
+  isVirtualProxy?: boolean;
 }
 
 function BaseNodeInner({ data }: NodeProps) {
-  const { node, isSelected, isHighlighted } = data as unknown as BaseNodeData;
+  const { node, isSelected, isHighlighted, isVirtualProxy } = data as unknown as BaseNodeData;
   const color = NODE_TYPE_COLORS[node.type] || '#6B7280';
   const meta = node.metadata || {};
+
+  // If node is unmounted / off-screen proxy, render lightweight proxy bounding box
+  if (isVirtualProxy) {
+    return (
+      <div
+        className="relative h-[72px] w-[240px] rounded-lg border border-dashed border-border/40 bg-card/10 opacity-30 pointer-events-none"
+        aria-hidden="true"
+      >
+        <Handle type="target" position={Position.Top} className="opacity-0" isConnectable={false} />
+        <Handle type="source" position={Position.Bottom} className="opacity-0" isConnectable={false} />
+      </div>
+    );
+  }
 
   const ringClass = isSelected
     ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
@@ -25,12 +39,14 @@ function BaseNodeInner({ data }: NodeProps) {
   return (
     <div
       className={`
-        group relative rounded-lg border bg-card px-3 py-2 shadow-sm
+        group relative w-[240px] rounded-lg border bg-card px-3 py-2 shadow-sm
         transition-all duration-150 hover:shadow-md
         ${ringClass}
       `}
       style={{ borderColor: isHighlighted ? '#F59E0B' : isSelected ? 'hsl(var(--primary))' : 'hsl(var(--border))' }}
     >
+      <Handle type="target" position={Position.Top} className="opacity-0" isConnectable={false} />
+      <Handle type="source" position={Position.Bottom} className="opacity-0" isConnectable={false} />
       <div className="flex items-center gap-2">
         <div
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"

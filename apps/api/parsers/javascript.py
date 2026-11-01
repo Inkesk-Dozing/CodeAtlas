@@ -315,7 +315,7 @@ class JavaScriptParser(BaseParser):
                     if child.type == "call_expression":
                         self._check_route_call(child, framework, content, routes)
 
-            # Recurse for decorators or container blocks
+            # Recurse for decorators or child nodes
             for child in n.children:
                 if child.type == "decorator":
                     decs.append(child.text.decode("utf-8").strip())
