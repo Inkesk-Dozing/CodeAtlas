@@ -2,6 +2,7 @@ from parsers.base import BaseParser, ParseResult
 from parsers.golang import GoParser
 from parsers.javascript import JavaScriptParser
 from parsers.python import PythonParser
+from parsers.rust import RustParser
 
 _parsers: dict[str, BaseParser] = {}
 
@@ -16,6 +17,8 @@ def get_parser(language: str) -> BaseParser | None:
         parser = PythonParser()
     elif language in ("go", "golang"):
         parser = GoParser()
+    elif language in ("rust", "rs"):
+        parser = RustParser()
     else:
         return None
 
@@ -23,4 +26,4 @@ def get_parser(language: str) -> BaseParser | None:
     return parser
 
 
-__all__ = ["BaseParser", "GoParser", "ParseResult", "get_parser"]
+__all__ = ["BaseParser", "GoParser", "ParseResult", "RustParser", "get_parser"]
