@@ -25,6 +25,7 @@ from config import settings
 from models import CodeEdge, CodeNode, Issue, MappingFeedback
 from services.mapping.classifier import IssueIntentClassifier
 from services.mapping.preprocessor import IssueTextPreprocessor
+from services.mapping.semantic import SemanticRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -220,25 +221,8 @@ class IssueMapper:
         return hits
 
     async def _semantic_signal(self, issue_text: str) -> dict[str, float]:
-        vector = await embed_text(issue_text)
-        if not vector:
-            return {}
-
-        sql = text(
-            """
-            SELECT id, 1 - (embedding <=> CAST(:qv AS vector)) AS score
-            FROM code_nodes
-            WHERE repo_id = :repo_id AND embedding IS NOT NULL
-            ORDER BY embedding <=> CAST(:qv AS vector)
-            LIMIT 40
-            """
-        )
-        result = await self.db.execute(sql, {"qv": str(vector), "repo_id": self.repo_id})
-        return {
-            str(row["id"]): max(0.0, min(1.0, float(row["score"])))
-            for row in result.mappings()
-            if float(row["score"] or 0) > 0.2
-        }
+        retriever = SemanticRetriever(db=self.db, repo_id=self.repo_id, limit=50)
+        return await retriever.retrieve_candidates(issue_text)
 
     async def _historical_signal(self) -> dict[str, float]:
         sql = select(
