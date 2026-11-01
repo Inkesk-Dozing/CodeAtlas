@@ -1,5 +1,6 @@
 from parsers import get_parser
 from parsers.base import ParsedSymbol, ParseResult
+from parsers.golang import GoParser
 from parsers.javascript import JavaScriptParser
 from parsers.python import PythonParser
 
@@ -50,6 +51,8 @@ class TestParserRegistry:
         assert isinstance(get_parser("typescript"), JavaScriptParser)
         assert isinstance(get_parser("javascript"), JavaScriptParser)
         assert isinstance(get_parser("python"), PythonParser)
+        assert isinstance(get_parser("go"), GoParser)
+        assert isinstance(get_parser("golang"), GoParser)
 
     def test_unknown_language(self):
         assert get_parser("cobol") is None
@@ -122,3 +125,90 @@ class TestPythonParser:
         s = ParsedSymbol(name="x", kind="function", line=1)
         assert s.metadata == {}
         assert s.is_exported is False
+
+
+GO_SAMPLE = """
+package main
+
+import (
+    "context"
+    "fmt"
+    gin "github.com/gin-gonic/gin"
+)
+
+type Config struct {
+    Port int
+}
+
+type UserService struct {
+    Config
+    db string
+}
+
+type UserReader interface {
+    Get(ctx context.Context, id string) (string, error)
+}
+
+func (s *UserService) GetUser(ctx context.Context, id string) (string, error) {
+    return "user", nil
+}
+
+func RegisterRoutes(r *gin.Engine, s *UserService) {
+    r.GET("/api/v1/users", s.GetUser)
+    r.POST("/api/v1/users", nil)
+}
+"""
+
+
+class TestGoParser:
+    def setup_method(self):
+        self.parser = GoParser()
+
+    def test_extracts_package_and_imports(self):
+        result = self.parser.parse(GO_SAMPLE, "main.go")
+        sources = [i.source for i in result.imports]
+        assert "context" in sources
+        assert "fmt" in sources
+        assert "github.com/gin-gonic/gin" in sources
+
+    def test_extracts_structs_and_embedded(self):
+        result = self.parser.parse(GO_SAMPLE, "main.go")
+        struct_names = [s.name for s in result.classes]
+        assert "Config" in struct_names
+        assert "UserService" in struct_names
+
+        user_svc = next(s for s in result.classes if s.name == "UserService")
+        assert "Config" in user_svc.metadata.get("embedded", [])
+        assert user_svc.is_exported is True
+
+    def test_extracts_interfaces(self):
+        result = self.parser.parse(GO_SAMPLE, "main.go")
+        iface_names = [i.name for i in result.interfaces]
+        assert "UserReader" in iface_names
+        reader = next(i for i in result.interfaces if i.name == "UserReader")
+        assert reader.is_exported is True
+
+    def test_extracts_receiver_methods_and_functions(self):
+        result = self.parser.parse(GO_SAMPLE, "main.go")
+        fn_names = [f.name for f in result.functions]
+        assert "GetUser" in fn_names
+        assert "RegisterRoutes" in fn_names
+
+        method = next(f for f in result.functions if f.name == "GetUser")
+        assert method.kind == "method"
+        assert method.parent == "UserService"
+        assert method.metadata["receiver"] == "UserService"
+        assert method.is_exported is True
+
+        pkg_fn = next(f for f in result.functions if f.name == "RegisterRoutes")
+        assert pkg_fn.kind == "function"
+        assert pkg_fn.parent == "main"
+
+    def test_extracts_gin_routes(self):
+        result = self.parser.parse(GO_SAMPLE, "main.go")
+        assert len(result.routes) >= 2
+        paths = [r.path for r in result.routes]
+        assert "/api/v1/users" in paths
+        methods = [r.method for r in result.routes]
+        assert "GET" in methods and "POST" in methods
+
