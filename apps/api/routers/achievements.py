@@ -10,10 +10,10 @@ community tools such as gitbadgecheck.vercel.app with structured AI prompt inges
 from __future__ import annotations
 
 import logging
-import math
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/achievements", tags=["GitHub Achievements & AI API"]
 # Canonical Achievement Criteria & Tier Definitions (GitBadgeCheck Spec)
 # -----------------------------------------------------------------------------
 
-ACHIEVEMENTS_REGISTRY: Dict[str, Dict[str, Any]] = {
+ACHIEVEMENTS_REGISTRY: dict[str, dict[str, Any]] = {
     "pull-shark": {
         "id": "pull-shark",
         "name": "Pull Shark",
@@ -163,15 +163,15 @@ class AchievementStatus(BaseModel):
     icon: str
     description: str
     unlocked: bool
-    current_tier: Optional[str]
-    current_multiplier: Optional[str]
+    current_tier: str | None
+    current_multiplier: str | None
     current_count: int
-    next_tier: Optional[str]
-    next_threshold: Optional[int]
+    next_tier: str | None
+    next_threshold: int | None
     remaining_for_next_tier: int
     progress_percentage: float
     tips: str
-    tiers: List[TierProgress]
+    tiers: list[TierProgress]
 
 class UserAchievementsSummary(BaseModel):
     username: str
@@ -182,20 +182,20 @@ class UserAchievementsSummary(BaseModel):
     legacy_badges: int
     highest_rank_badge: str
     estimated_xp: int
-    achievements: List[AchievementStatus]
+    achievements: list[AchievementStatus]
 
 class AIAchievementContext(BaseModel):
     """Compact context format designed specifically for AI agent prompts."""
     prompt_context: str
     markdown_card: str
-    raw_stats: Dict[str, Any]
-    actionable_next_steps: List[str]
+    raw_stats: dict[str, Any]
+    actionable_next_steps: list[str]
 
 # -----------------------------------------------------------------------------
 # Business Logic & Scraper / Estimator Simulation
 # -----------------------------------------------------------------------------
 
-def compute_user_metrics(username: str, custom_metrics: Optional[Dict[str, int]] = None) -> Dict[str, int]:
+def compute_user_metrics(username: str, custom_metrics: dict[str, int] | None = None) -> dict[str, int]:
     """
     Computes or estimates raw metrics for a GitHub username.
     In live environments, this combines GitHub GraphQL queries with fallback heuristics.
@@ -206,7 +206,7 @@ def compute_user_metrics(username: str, custom_metrics: Optional[Dict[str, int]]
 
     # Deterministic seed based on username for reproducible progress estimation
     seed = sum(ord(c) * (i + 1) for i, c in enumerate(username.lower()))
-    
+
     # Calculate realistic progress metrics
     merged_prs = (seed % 140) + 1
     max_stars = (seed * 3) % 1500
@@ -231,8 +231,8 @@ def compute_user_metrics(username: str, custom_metrics: Optional[Dict[str, int]]
     }
 
 
-def evaluate_achievements(username: str, metrics: Dict[str, int]) -> UserAchievementsSummary:
-    achievement_results: List[AchievementStatus] = []
+def evaluate_achievements(username: str, metrics: dict[str, int]) -> UserAchievementsSummary:
+    achievement_results: list[AchievementStatus] = []
     total_unlocked = 0
     active_count = 0
     legacy_count = 0
@@ -242,10 +242,10 @@ def evaluate_achievements(username: str, metrics: Dict[str, int]) -> UserAchieve
 
     tier_xp_map = {"Base": 100, "Bronze": 250, "Silver": 500, "Gold": 1500, "Legacy": 1000}
 
-    for ach_id, config in ACHIEVEMENTS_REGISTRY.items():
+    for _ach_id, config in ACHIEVEMENTS_REGISTRY.items():
         metric_val = metrics.get(config["metric_name"], 0)
         tiers_spec = config["tiers"]
-        
+
         current_tier = None
         current_mult = None
         unlocked = False
@@ -253,7 +253,7 @@ def evaluate_achievements(username: str, metrics: Dict[str, int]) -> UserAchieve
         next_threshold = None
         tier_progresses = []
 
-        for idx, t in enumerate(tiers_spec):
+        for _idx, t in enumerate(tiers_spec):
             is_unlocked = metric_val >= t["threshold"]
             tier_progresses.append(
                 TierProgress(
@@ -277,7 +277,7 @@ def evaluate_achievements(username: str, metrics: Dict[str, int]) -> UserAchieve
                 active_count += 1
             else:
                 legacy_count += 1
-            
+
             xp = tier_xp_map.get(current_tier or "Base", 100)
             total_xp += xp
             if xp > highest_tier_score:
@@ -341,7 +341,7 @@ def evaluate_achievements(username: str, metrics: Dict[str, int]) -> UserAchieve
 
 @router.get(
     "/catalog",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get Global GitHub Achievements Catalog & Tiers",
     description="Returns all canonical GitHub achievements, thresholds, multipliers, and unlocking advice."
 )
@@ -362,16 +362,16 @@ async def get_achievements_catalog():
 )
 async def get_user_achievements(
     username: str,
-    merged_prs: Optional[int] = Query(None, description="Override merged PR count"),
-    max_stars: Optional[int] = Query(None, description="Override top repository stars"),
-    coauthored_commits: Optional[int] = Query(None, description="Override co-authored commits"),
-    accepted_answers: Optional[int] = Query(None, description="Override accepted discussion answers"),
+    merged_prs: int | None = Query(None, description="Override merged PR count"),
+    max_stars: int | None = Query(None, description="Override top repository stars"),
+    coauthored_commits: int | None = Query(None, description="Override co-authored commits"),
+    accepted_answers: int | None = Query(None, description="Override accepted discussion answers"),
 ):
     clean_user = username.strip().lstrip("@")
     if not clean_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username cannot be empty")
 
-    custom: Optional[Dict[str, int]] = None
+    custom: dict[str, int] | None = None
     if any(v is not None for v in [merged_prs, max_stars, coauthored_commits, accepted_answers]):
         base = compute_user_metrics(clean_user)
         if merged_prs is not None:
@@ -396,7 +396,7 @@ async def get_user_achievements(
 )
 async def get_ai_achievement_context(
     username: str,
-    target_badge: Optional[str] = Query(None, description="Specific badge ID to prioritize (e.g. pull-shark)")
+    target_badge: str | None = Query(None, description="Specific badge ID to prioritize (e.g. pull-shark)")
 ):
     clean_user = username.strip().lstrip("@")
     if not clean_user:
@@ -406,9 +406,9 @@ async def get_ai_achievement_context(
     summary = evaluate_achievements(clean_user, metrics)
 
     # Compile actionable next steps
-    actionable_steps: List[str] = []
-    unlocked_list: List[str] = []
-    pending_list: List[str] = []
+    actionable_steps: list[str] = []
+    unlocked_list: list[str] = []
+    pending_list: list[str] = []
 
     for ach in summary.achievements:
         if ach.unlocked:
@@ -449,10 +449,10 @@ async def get_ai_achievement_context(
         f"  <unlocked_badges>\n"
         + "\n".join(f"    <badge id=\"{a.id}\" name=\"{a.name}\" tier=\"{a.current_tier}\" count=\"{a.current_count}\" progress=\"{a.progress_percentage}%\" />" for a in summary.achievements if a.unlocked)
         + "\n  </unlocked_badges>\n"
-        f"  <recommended_next_actions>\n"
+        "  <recommended_next_actions>\n"
         + "\n".join(f"    <action priority=\"{idx+1}\">{step}</action>" for idx, step in enumerate(actionable_steps[:5]))
         + "\n  </recommended_next_actions>\n"
-        f"</github_achievements>"
+        "</github_achievements>"
     )
 
     return AIAchievementContext(

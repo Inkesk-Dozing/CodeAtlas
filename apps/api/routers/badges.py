@@ -1,9 +1,7 @@
 import hashlib
 import time
-from datetime import datetime, timezone
-from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/badges", tags=["badges"])
@@ -37,7 +35,6 @@ async def get_contributor_badge_svg(
         ("url(#gradDark)") if theme in ("dark", "dracula") else ("url(#gradLight)")
     )
     border_color = "#38bdf8" if theme == "dark" else "#818cf8"
-    accent_color = "#0ea5e9"
 
     cert_hash = hashlib.sha256(f"{username}:{tier}:CodeAtlas".encode()).hexdigest()[:8]
     cert_id = f"ca_cert_{cert_hash}"

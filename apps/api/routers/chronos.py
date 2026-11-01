@@ -1,9 +1,9 @@
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -42,7 +42,7 @@ async def get_chronos_timeline(
     repo = await _verify_repo(repo_id, db)
 
     # Base commit timeline synthesized with repo context
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     milestones = [
         ("HEAD", "feat: unified canvas engine with Chronos & OmniQuery telemetry", 120, 15, "Current HEAD"),
         ("a8f4c2e", "refactor: decouple database ORM models and isolate schema layer", 340, 210, "PR #104: Database Decoupling"),

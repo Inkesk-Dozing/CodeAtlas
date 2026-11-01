@@ -1,7 +1,6 @@
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -109,7 +108,7 @@ class WorkspaceBoundaryDetector:
         for name, pkg in name_to_pkg.items():
             all_deps = pkg.dependencies + pkg.dev_dependencies + pkg.peer_dependencies
             internal_deps = [d for d in all_deps if d in workspace_names and d != name]
-            dependency_graph[name] = sorted(list(set(internal_deps)))
+            dependency_graph[name] = sorted(set(internal_deps))
 
         # Run Tarjan's SCC to detect circular dependencies
         cycles = self.detect_circular_dependencies(dependency_graph)
@@ -195,3 +194,4 @@ class WorkspaceBoundaryDetector:
                     )
 
         return detected_cycles
+

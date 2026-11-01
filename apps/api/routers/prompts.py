@@ -1,6 +1,5 @@
-from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/repos/{repo_id}/prompts", tags=["prompts"])
@@ -16,7 +15,7 @@ class SubgraphPromptResponse(BaseModel):
     prompt_token_count: int
     system_prompt: str
     interface_contracts: str
-    caller_context: List[str]
+    caller_context: list[str]
 
 
 @router.get("/agents-md")

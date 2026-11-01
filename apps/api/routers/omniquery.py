@@ -1,13 +1,14 @@
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import CodeEdge, CodeNode, Repository, User
+from models import CodeNode, Repository, User
 from schemas import (
     OmniQueryCodeDependency,
     OmniQueryExecuteRequest,
@@ -335,7 +336,7 @@ async def execute_query(
     await _verify_repo(repo_id, db)
 
     exec_id = f"omni-{uuid.uuid4().hex[:10]}"
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
 
     return OmniQueryExecuteResponse(
         id=exec_id,

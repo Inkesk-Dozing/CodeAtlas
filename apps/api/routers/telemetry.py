@@ -1,7 +1,6 @@
 import time
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
@@ -16,11 +15,11 @@ class HeartbeatRequest(BaseModel):
     entity: str
     type: str = "file"
     time: float = Field(default_factory=time.time)
-    project: Optional[str] = "CodeAtlas"
-    branch: Optional[str] = "main"
-    language: Optional[str] = "python"
+    project: str | None = "CodeAtlas"
+    branch: str | None = "main"
+    language: str | None = "python"
     is_write: bool = False
-    cursorpos: Optional[HeartbeatCursorPos] = None
+    cursorpos: HeartbeatCursorPos | None = None
 
 
 class HeartbeatResponse(BaseModel):
@@ -42,7 +41,7 @@ class NodeTelemetryStat(BaseModel):
 class TelemetrySummaryResponse(BaseModel):
     repo_id: str
     total_focus_hours: float
-    hotspots: List[NodeTelemetryStat]
+    hotspots: list[NodeTelemetryStat]
 
 
 @router.post("/heartbeat", response_model=HeartbeatResponse)

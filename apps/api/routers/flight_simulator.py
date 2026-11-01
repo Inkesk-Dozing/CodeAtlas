@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/flight-simulator", tags=["flight-simulator"])
@@ -29,9 +29,9 @@ class GitCommandRequest(BaseModel):
 
 class GitCommandResponse(BaseModel):
     stdout: str
-    stderr: Optional[str] = None
+    stderr: str | None = None
     current_branch: str
-    dag_state: Dict[str, Any]
+    dag_state: dict[str, Any]
 
 
 class PRReviewBotComment(BaseModel):
@@ -43,8 +43,8 @@ class PRReviewBotComment(BaseModel):
 class PRReviewResponse(BaseModel):
     pr_number: int
     status: str
-    ci_checks: Dict[str, str]
-    bot_comments: List[PRReviewBotComment]
+    ci_checks: dict[str, str]
+    bot_comments: list[PRReviewBotComment]
 
 
 MISSIONS_CATALOG = [
@@ -75,7 +75,7 @@ MISSIONS_CATALOG = [
 ]
 
 
-@router.get("/missions", response_model=List[Mission])
+@router.get("/missions", response_model=list[Mission])
 async def list_missions():
     """
     Returns available Flight Simulator learning missions.
