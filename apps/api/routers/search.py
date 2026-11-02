@@ -13,6 +13,7 @@ from schemas import (
     SearchResultResponse,
 )
 from services.auth import get_current_user
+from services.mapping.rrf import DEFAULT_RRF_K, reciprocal_rank_fusion
 
 router = APIRouter(prefix="/repos/{repo_id}/search", tags=["search"])
 
@@ -160,15 +161,27 @@ async def hybrid_search(
     semantic_resp = await semantic_search(repo_id, payload, user, db)
     structural_resp = await structural_search(repo_id, payload, user, db)
 
-    seen: dict[str, SearchResultResponse] = {}
-    for r in semantic_resp.results:
-        seen[r.node.id] = r
-    for r in structural_resp.results:
-        if r.node.id in seen:
-            seen[r.node.id].score = min(1.0, seen[r.node.id].score * 0.6 + r.score * 0.4)
-        else:
-            seen[r.node.id] = r
+    # Prepare ranked lists for Reciprocal Rank Fusion
+    semantic_items = [{"id": r.node.id, "result": r} for r in semantic_resp.results]
+    structural_items = [{"id": r.node.id, "result": r} for r in structural_resp.results]
 
-    sorted_results = sorted(seen.values(), key=lambda x: x.score, reverse=True)[: payload.limit]
+    fused = reciprocal_rank_fusion([semantic_items, structural_items], id_key="id", k=DEFAULT_RRF_K)
+
+    # Normalize max RRF score to 1.0 for response
+    max_score = fused[0][1] if fused else 1.0
+    results: list[SearchResultResponse] = []
+
+    for item, rrf_score in fused[: payload.limit]:
+        original_r: SearchResultResponse = item["result"]
+        norm_score = round(rrf_score / max_score, 4) if max_score > 0 else 0.0
+        results.append(
+            SearchResultResponse(
+                node=original_r.node,
+                score=norm_score,
+                match_type="hybrid",
+                snippet=original_r.snippet,
+            )
+        )
+
     took_ms = int((time.time() - start) * 1000)
-    return SearchResponse(results=sorted_results, took_ms=took_ms)
+    return SearchResponse(results=results, took_ms=took_ms)
