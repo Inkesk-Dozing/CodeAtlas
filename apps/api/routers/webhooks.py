@@ -138,6 +138,7 @@ async def _handle_installation_repos(payload: dict, db: AsyncSession):
 async def _handle_push(payload: dict, db: AsyncSession):
     repo_full_name = payload.get("repository", {}).get("full_name", "")
     ref = payload.get("ref", "")
+    before_sha = payload.get("before", "")
     after_sha = payload.get("after", "")
 
     if not ref.startswith("refs/heads/"):
@@ -156,7 +157,7 @@ async def _handle_push(payload: dict, db: AsyncSession):
 
     from tasks.ingestion_tasks import trigger_incremental_update
 
-    await trigger_incremental_update(str(repo.id), branch, after_sha)
+    await trigger_incremental_update(str(repo.id), branch, after_sha, before_sha=before_sha)
 
 
 async def _handle_issue(payload: dict, db: AsyncSession):
