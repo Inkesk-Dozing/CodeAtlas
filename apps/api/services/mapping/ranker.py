@@ -18,13 +18,14 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models import CodeNode, Issue
 from services.mapping.classifier import IssueIntentClassifier
 from services.mapping.historical import HistoricalFeedbackWeighter
+from services.mapping.hotspot import HotspotPrioritizer
 from services.mapping.preprocessor import IssueTextPreprocessor, PreprocessedIssue
 from services.mapping.semantic import SemanticRetriever
 from services.mapping.structural import StructuralMatcher
@@ -208,25 +209,8 @@ class IssueMapper:
         return await weighter.get_historical_weights()
 
     async def _hotspot_signal(self) -> dict[str, float]:
-        sql = text(
-            """
-            SELECT node_id, count(*) AS degree
-            FROM (
-                SELECT source_id AS node_id FROM code_edges WHERE repo_id = :repo_id
-                UNION ALL
-                SELECT target_id AS node_id FROM code_edges WHERE repo_id = :repo_id
-            ) e
-            GROUP BY node_id
-            ORDER BY degree DESC
-            LIMIT 60
-            """
-        )
-        result = await self.db.execute(sql, {"repo_id": self.repo_id})
-        degrees = [(str(row["node_id"]), int(row["degree"])) for row in result.mappings()]
-        if not degrees:
-            return {}
-        max_degree = max(d for _, d in degrees) or 1
-        return {nid: (d / max_degree) ** 0.5 for nid, d in degrees}
+        prioritizer = HotspotPrioritizer(db=self.db, repo_id=self.repo_id)
+        return await prioritizer.get_hotspot_centrality(limit=100)
 
     async def _propagation_signal(
         self,
