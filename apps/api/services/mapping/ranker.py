@@ -18,12 +18,13 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
-from models import CodeNode, Issue, MappingFeedback
+from models import CodeNode, Issue
 from services.mapping.classifier import IssueIntentClassifier
+from services.mapping.historical import HistoricalFeedbackWeighter
 from services.mapping.preprocessor import IssueTextPreprocessor, PreprocessedIssue
 from services.mapping.semantic import SemanticRetriever
 from services.mapping.structural import StructuralMatcher
@@ -203,30 +204,8 @@ class IssueMapper:
         return await retriever.retrieve_candidates(issue_text)
 
     async def _historical_signal(self) -> dict[str, float]:
-        sql = select(
-            MappingFeedback.node_id,
-            func.count(MappingFeedback.id).label("total"),
-            func.sum(
-                text(
-                    "CASE WHEN rating = 'relevant' THEN 1.0 "
-                    "WHEN rating = 'partially_relevant' THEN 0.5 ELSE 0.0 END"
-                )
-            ).label("positive"),
-        ).where(
-            MappingFeedback.node_id.in_(
-                select(CodeNode.id).where(CodeNode.repo_id == self.repo_id)
-            )
-        )
-        sql = sql.group_by(MappingFeedback.node_id)
-
-        result = await self.db.execute(sql)
-        scores: dict[str, float] = {}
-        for row in result:
-            total = int(row.total or 0)
-            positive = float(row.positive or 0.0)
-            if total >= 3:
-                scores[str(row.node_id)] = positive / total
-        return scores
+        weighter = HistoricalFeedbackWeighter(db=self.db, repo_id=self.repo_id)
+        return await weighter.get_historical_weights()
 
     async def _hotspot_signal(self) -> dict[str, float]:
         sql = text(
