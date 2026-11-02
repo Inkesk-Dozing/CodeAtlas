@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import AsyncSessionLocal
 from models import CodeEdge, CodeNode, IngestionError, IngestionTask, Repository
+from services.ingestion.broadcaster import progress_broadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,14 @@ async def run_ingestion_pipeline(
             # ── Stage 1: Clone ──
             task.current_stage = "clone"
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="clone",
+                progress=0,
+                files_total=0,
+                files_processed=0,
+            )
 
             files = await _clone_repository(repo, branch)
             task.files_total = len(files)
@@ -76,44 +85,117 @@ async def run_ingestion_pipeline(
             cumulative += STAGE_WEIGHTS["clone"]
             task.progress = cumulative
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="clone",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=0,
+                stage_timings=stage_timings,
+            )
 
             # ── Stage 2: Parse ──
             stage_start = time.time()
             task.current_stage = "parse"
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="parse",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=0,
+                stage_timings=stage_timings,
+            )
 
             parsed = await _parse_files(files, repo.settings)
+            task.files_processed = len(parsed)
             stage_timings["parse"] = time.time() - stage_start
             cumulative += STAGE_WEIGHTS["parse"]
             task.progress = cumulative
             await db.commit()
+            await progress_broadcaster.publish_progress(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="parse",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             # ── Stage 3: Extract ──
             stage_start = time.time()
             task.current_stage = "extract"
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="extract",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             nodes, edges = await _extract_graph(parsed, str(repo.id))
             stage_timings["extract"] = time.time() - stage_start
             cumulative += STAGE_WEIGHTS["extract"]
             task.progress = cumulative
             await db.commit()
+            await progress_broadcaster.publish_progress(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="extract",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             # ── Stage 4: Embed ──
             stage_start = time.time()
             task.current_stage = "embed"
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="embed",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             await _generate_embeddings(nodes)
             stage_timings["embed"] = time.time() - stage_start
             cumulative += STAGE_WEIGHTS["embed"]
             task.progress = cumulative
             await db.commit()
+            await progress_broadcaster.publish_progress(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="embed",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             # ── Stage 5: Persist ──
             stage_start = time.time()
             task.current_stage = "persist"
             await db.commit()
+            await progress_broadcaster.publish_stage_transition(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage="persist",
+                progress=cumulative,
+                files_total=len(files),
+                files_processed=len(parsed),
+                stage_timings=stage_timings,
+            )
 
             created_nodes, created_edges = await _persist_graph(db, str(repo.id), nodes, edges)
             stage_timings["persist"] = time.time() - stage_start
@@ -133,6 +215,13 @@ async def run_ingestion_pipeline(
             repo.error_message = None
 
             await db.commit()
+            await progress_broadcaster.publish_completed(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                nodes_created=created_nodes,
+                edges_created=created_edges,
+                stage_timings=stage_timings,
+            )
             logger.info(
                 "Ingestion completed: task=%s repo=%s nodes=%d edges=%d",
                 task_id, repo_id, created_nodes, created_edges,
@@ -174,6 +263,14 @@ async def run_ingestion_pipeline(
             db.add(error_log)
 
             await db.commit()
+            await progress_broadcaster.publish_failed(
+                repo_id=str(repo.id),
+                task_id=task_id,
+                stage=task.current_stage or "unknown",
+                error_message=err_msg,
+                diagnostic_log=tb_str,
+                stage_timings=stage_timings,
+            )
             raise
 
 

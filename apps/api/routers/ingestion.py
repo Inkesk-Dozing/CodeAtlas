@@ -1,6 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,8 +20,39 @@ from schemas import (
     RepositoryHealthResponse,
 )
 from services.auth import get_current_user
+from services.ingestion.broadcaster import progress_broadcaster
 
 router = APIRouter(prefix="/repos/{repo_id}/ingest", tags=["ingestion"])
+
+
+@router.websocket("/ws")
+async def ingestion_progress_ws(
+    websocket: WebSocket,
+    repo_id: str,
+):
+    """Real-time ingestion pipeline progress tracking WebSocket stream."""
+    await websocket.accept()
+
+    # Emit latest cached state if available
+    latest = progress_broadcaster.get_latest(repo_id)
+    if latest:
+        try:
+            await websocket.send_json(latest)
+        except Exception:
+            return
+
+    try:
+        async for event in progress_broadcaster.subscribe(repo_id):
+            await websocket.send_json(event)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 @router.post("/trigger", response_model=IngestionStatusResponse, status_code=202)
