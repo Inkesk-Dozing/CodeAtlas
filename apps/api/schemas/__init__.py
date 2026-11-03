@@ -136,10 +136,13 @@ class GraphQuery(BaseModel):
 
 
 class SubgraphQuery(BaseModel):
-    center_node_id: str
+    center_node_id: str | None = None
+    node_ids: list[str] = Field(default_factory=list)
+    depth: int = Field(default=1, ge=1, le=5)
     radius: int = Field(default=2, ge=1, le=5)
+    direction: str = Field(default="both", pattern="^(upstream|downstream|both)$")
     edge_types: list[str] | None = None
-    max_nodes: int = Field(default=200, ge=10, le=500)
+    max_nodes: int = Field(default=200, ge=10, le=1000)
 
 
 class NodeDetailResponse(CodeNodeResponse):

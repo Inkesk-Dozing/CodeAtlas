@@ -9,8 +9,10 @@ from schemas import (
     CodeNodeResponse,
     GraphResponse,
     NodeDetailResponse,
+    SubgraphQuery,
 )
 from services.auth import get_current_user
+from services.graph_builder.subgraph_extractor import SubgraphExtractor
 
 router = APIRouter(prefix="/repos/{repo_id}", tags=["graph"])
 
@@ -78,6 +80,40 @@ async def get_graph(
     )
 
 
+@router.post("/graph/subgraph", response_model=GraphResponse)
+async def post_subgraph(
+    repo_id: str,
+    payload: SubgraphQuery,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _verify_repo(repo_id, db)
+
+    # Collect seed node IDs
+    seed_node_ids = list(payload.node_ids)
+    if payload.center_node_id and payload.center_node_id not in seed_node_ids:
+        seed_node_ids.append(payload.center_node_id)
+
+    if not seed_node_ids:
+        raise HTTPException(status_code=400, detail="At least one node_id or center_node_id is required")
+
+    depth = payload.depth or payload.radius or 1
+    extractor = SubgraphExtractor(db=db, repo_id=repo_id)
+    nodes, edges = await extractor.extract_subgraph(
+        node_ids=seed_node_ids,
+        depth=depth,
+        direction=payload.direction,  # type: ignore[arg-type]
+        edge_types=payload.edge_types,
+        max_nodes=payload.max_nodes,
+    )
+
+    return GraphResponse(
+        nodes=[CodeNodeResponse.model_validate(n) for n in nodes],
+        edges=[CodeEdgeResponse.model_validate(e) for e in edges],
+        total=len(nodes),
+    )
+
+
 @router.get("/graph/subgraph", response_model=GraphResponse)
 async def get_subgraph(
     repo_id: str,
@@ -89,46 +125,22 @@ async def get_subgraph(
 ):
     await _verify_repo(repo_id, db)
 
-    center = await db.get(CodeNode, center_node_id)
-    if center is None:
-        raise HTTPException(status_code=404, detail="Center node not found")
+    extractor = SubgraphExtractor(db=db, repo_id=repo_id)
+    nodes, edges = await extractor.extract_subgraph(
+        node_ids=[center_node_id],
+        depth=radius,
+        direction="both",
+        max_nodes=max_nodes,
+    )
 
-    visited = {center.id}
-    frontier = {center.id}
-    all_edges: list[CodeEdge] = []
-
-    for _ in range(radius):
-        if not frontier:
-            break
-        result = await db.execute(
-            select(CodeEdge).where(
-                CodeEdge.repo_id == repo_id,
-                (CodeEdge.source_id.in_(frontier)) | (CodeEdge.target_id.in_(frontier)),
-            )
-        )
-        round_edges = result.scalars().all()
-        next_frontier: set[str] = set()
-        for edge in round_edges:
-            all_edges.append(edge)
-            for nid in (edge.source_id, edge.target_id):
-                if nid not in visited and len(visited) < max_nodes:
-                    visited.add(nid)
-                    next_frontier.add(nid)
-        frontier = next_frontier
-
-    nodes_result = await db.execute(select(CodeNode).where(CodeNode.id.in_(visited)))
-    nodes = nodes_result.scalars().all()
-
-    seen_edge_ids = set()
-    unique_edges = []
-    for e in all_edges:
-        if e.id not in seen_edge_ids:
-            seen_edge_ids.add(e.id)
-            unique_edges.append(e)
+    if not nodes:
+        center = await db.get(CodeNode, center_node_id)
+        if center is None:
+            raise HTTPException(status_code=404, detail="Center node not found")
 
     return GraphResponse(
         nodes=[CodeNodeResponse.model_validate(n) for n in nodes],
-        edges=[CodeEdgeResponse.model_validate(e) for e in unique_edges],
+        edges=[CodeEdgeResponse.model_validate(e) for e in edges],
         total=len(nodes),
     )
 
