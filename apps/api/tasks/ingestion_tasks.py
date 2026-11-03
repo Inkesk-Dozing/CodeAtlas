@@ -109,6 +109,10 @@ async def run_ingestion_pipeline(
             )
 
             parsed = await _parse_files(files, repo.settings)
+            # Explicit garbage collection to release Tree-sitter C memory and AST nodes
+            import gc
+            gc.collect()
+
             task.files_processed = len(parsed)
             stage_timings["parse"] = time.time() - stage_start
             cumulative += STAGE_WEIGHTS["parse"]
