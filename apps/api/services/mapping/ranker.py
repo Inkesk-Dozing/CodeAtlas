@@ -23,6 +23,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models import CodeNode, Issue
+from services.mapping.calibration import (
+    CALIBRATED_WEIGHTS,
+    TIER_HIGH_THRESHOLD,
+    TIER_MEDIUM_THRESHOLD,
+    calibrate_confidence_sigmoid,
+    classify_confidence_tier,
+)
 from services.mapping.classifier import IssueIntentClassifier
 from services.mapping.historical import HistoricalFeedbackWeighter
 from services.mapping.hotspot import HotspotPrioritizer
@@ -35,15 +42,9 @@ logger = logging.getLogger(__name__)
 
 MODEL_VERSION = "v2.0.0-hybrid"
 
-WEIGHTS = {
-    "semantic": 0.40,
-    "structural": 0.30,
-    "topological": 0.12,
-    "historical": 0.10,
-    "hotspot": 0.08,
-}
+WEIGHTS = CALIBRATED_WEIGHTS
 
-TIER_THRESHOLDS = {"high": 0.75, "medium": 0.50, "low": 0.30}
+TIER_THRESHOLDS = {"high": TIER_HIGH_THRESHOLD, "medium": TIER_MEDIUM_THRESHOLD, "low": 0.30}
 
 STOPWORDS = frozenset(
     ["a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "has", "have", "how", "i", "in", "is", "it", "its", "of", "on", "or", "that", "the", "this", "to", "was", "we", "what", "when", "where", "which", "who", "will", "with", "you", "your", "not", "no", "can", "could", "should", "would", "may", "might", "do", "does", "did", "be", "been", "being"]
@@ -167,7 +168,8 @@ class IssueMapper:
         await self._propagation_signal(combined, query_tokens, query_ident_tokens)
 
         for rn in combined.values():
-            rn.score = sum(rn.signals.get(k, 0.0) * w for k, w in active_weights.items())
+            raw_score = sum(rn.signals.get(k, 0.0) * w for k, w in active_weights.items())
+            rn.score = calibrate_confidence_sigmoid(raw_score)
             rn.evidence_keywords = self._matched_keywords(rn, query_tokens)
 
         ranked = sorted(combined.values(), key=lambda r: r.score, reverse=True)
@@ -269,7 +271,7 @@ class IssueMapper:
         rn.evidence_patterns = list(dict.fromkeys(rn.evidence_patterns + actions))
 
     def _to_mapping(self, rn: RankedNode) -> dict:
-        tier = tier_for(rn.score)
+        tier = classify_confidence_tier(rn.score)
         return {
             "node": rn.node,
             "confidence": round(rn.score, 4),
