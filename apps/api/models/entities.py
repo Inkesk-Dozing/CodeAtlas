@@ -185,7 +185,13 @@ class CodeNode(Base, TimestampMixin):
         Index("idx_nodes_repo_type", "repo_id", "type"),
         Index("idx_nodes_repo_path", "repo_id", "path"),
         Index("idx_nodes_repo_language", "repo_id", "language"),
-        Index("idx_nodes_embedding", "embedding", postgresql_using="hnsw"),
+        Index(
+            "idx_nodes_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
         Index(
             "idx_nodes_trgm_name_path",
             "name",
