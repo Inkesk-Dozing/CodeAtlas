@@ -11,6 +11,7 @@ from parsers.base import (
     ParsedSymbol,
     ParseResult,
 )
+from parsers.orm import PythonORMParser
 
 logger = logging.getLogger(__name__)
 
@@ -349,18 +350,32 @@ class PythonParser(BaseParser):
             for d in decorators
         )
 
-        is_model = any(
+        # Deep ORM metadata extraction
+        body_slice = "\n".join(lines[line_num - 1:end_line])
+        orm_meta = PythonORMParser.extract_model_metadata(name, bases, body_slice)
+
+        is_model = orm_meta is not None or any(
             b in ("models.Model", "Model", "Base", "db.Model") or "model" in b.lower()
             for b in bases
         ) or bool(fields)
 
         if is_model:
+            model_metadata = {
+                "fields": orm_meta["fields"] if orm_meta else fields,
+                "bases": bases,
+            }
+            if orm_meta:
+                model_metadata["orm"] = orm_meta["orm"]
+                model_metadata["primary_keys"] = orm_meta["primary_keys"]
+                model_metadata["foreign_keys"] = orm_meta["foreign_keys"]
+                model_metadata["relations"] = orm_meta["relations"]
+
             models.append(ParsedSymbol(
                 name=name,
                 kind="model",
                 line=line_num,
                 end_line=end_line,
-                metadata={"fields": fields, "bases": bases},
+                metadata=model_metadata,
             ))
 
         classes.append(ParsedSymbol(
@@ -553,16 +568,27 @@ class PythonParser(BaseParser):
                 end_line = self._find_class_end(lines, line_num - 1)
                 block = "\n".join(lines[line_num - 1:end_line])
 
+                orm_meta = PythonORMParser.extract_model_metadata(name, [], block)
+
                 fields = []
                 for f in re.finditer(r"(\w+)\s*=\s*(?:db\.Column|Column|Mapped|Mapped\[)", block):
                     fields.append(f.group(1))
+
+                model_metadata = {
+                    "fields": orm_meta["fields"] if orm_meta else fields,
+                }
+                if orm_meta:
+                    model_metadata["orm"] = orm_meta["orm"]
+                    model_metadata["primary_keys"] = orm_meta["primary_keys"]
+                    model_metadata["foreign_keys"] = orm_meta["foreign_keys"]
+                    model_metadata["relations"] = orm_meta["relations"]
 
                 models.append(ParsedSymbol(
                     name=name,
                     kind="model",
                     line=line_num,
                     end_line=end_line,
-                    metadata={"fields": fields},
+                    metadata=model_metadata,
                 ))
         return models
 

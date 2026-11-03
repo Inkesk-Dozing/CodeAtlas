@@ -1,4 +1,5 @@
 import hashlib
+import re
 import uuid
 from typing import Any
 
@@ -20,6 +21,7 @@ class GraphExtractor:
         self._create_class_hierarchy_edges(parsed_files)
         self._create_route_edges(parsed_files)
         self._create_component_edges(parsed_files)
+        self._create_orm_model_edges(parsed_files)
         self._create_containment_edges(parsed_files)
 
         return self.nodes, self.edges
@@ -251,6 +253,117 @@ class GraphExtractor:
                 for hook in comp.metadata.get("hooks_used", []):
                     hook_key = f"{path}::{hook}::hook"
                     self._add_edge(comp_key, hook_key, "uses_hook")
+
+    def _create_orm_model_edges(self, files: list[dict]):
+        # Index all models across files by name
+        model_map: dict[str, str] = {}
+        for f in files:
+            parsed: ParseResult | None = f.get("parsed")
+            if not parsed:
+                continue
+            path = f["path"]
+            for m in parsed.models:
+                # Key by model name (case-insensitive and exact)
+                model_key = f"{path}::{m.name}::model"
+                model_map[m.name] = model_key
+                model_map[m.name.lower()] = model_key
+                # Also plural/singular forms if applicable
+                if m.name.endswith("s"):
+                    model_map[m.name[:-1].lower()] = model_key
+                else:
+                    model_map[f"{m.name.lower()}s"] = model_key
+
+        # 1. Connect model-to-model foreign keys & relations
+        for f in files:
+            parsed: ParseResult | None = f.get("parsed")
+            if not parsed:
+                continue
+            path = f["path"]
+            for m in parsed.models:
+                source_key = f"{path}::{m.name}::model"
+                foreign_keys = m.metadata.get("foreign_keys", [])
+                for fk in foreign_keys:
+                    target_model = fk.get("target_model")
+                    if target_model and target_model in model_map:
+                        target_key = model_map[target_model]
+                        if source_key != target_key:
+                            self._add_edge(
+                                source_key,
+                                target_key,
+                                "references_model",
+                                weight=1.0,
+                                foreign_key=fk.get("column"),
+                                target_column=fk.get("target_column", "id"),
+                            )
+
+                relations = m.metadata.get("relations", [])
+                for rel in relations:
+                    target_model = rel.get("target_model")
+                    if target_model and target_model in model_map:
+                        target_key = model_map[target_model]
+                        if source_key != target_key:
+                            # Avoid duplicate edge if already added by foreign_keys
+                            exists = any(
+                                e["source_key"] == source_key
+                                and e["target_key"] == target_key
+                                and e["type"] == "references_model"
+                                for e in self.edges
+                            )
+                            if not exists:
+                                self._add_edge(
+                                    source_key,
+                                    target_key,
+                                    "references_model",
+                                    weight=1.0,
+                                    relation_field=rel.get("field"),
+                                    relation_type=rel.get("type", "relation"),
+                                )
+
+        # 2. Connect API endpoints / routes to the database models they query or mutate
+        for f in files:
+            parsed: ParseResult | None = f.get("parsed")
+            if not parsed:
+                continue
+            path = f["path"]
+            content = f.get("content", "")
+
+            for route in parsed.routes:
+                route_key = f"{path}::{route.method} {route.path}::route"
+                handler_name = route.handler
+                route_path_tokens = set(re.findall(r"\w+", route.path.lower()))
+
+                for model_name, target_key in model_map.items():
+                    # Only check primary canonical model names (avoid case variants duplicate checking)
+                    if not model_name[0].isupper():
+                        continue
+
+                    model_lower = model_name.lower()
+                    # Determine if route or handler queries or mutates model
+                    is_related = (
+                        model_lower in route_path_tokens
+                        or (handler_name and model_lower in handler_name.lower())
+                    )
+
+                    if not is_related and content and re.search(rf"\b{model_name}\b", content):
+                        # Scoped occurrence
+                        is_related = True
+
+                    if is_related:
+                        edge_type = "mutates_model" if route.method.upper() in ("POST", "PUT", "PATCH", "DELETE") else "queries_model"
+                        # Verify we haven't already linked this route to this model
+                        exists = any(
+                            e["source_key"] == route_key
+                            and e["target_key"] == target_key
+                            for e in self.edges
+                        )
+                        if not exists:
+                            self._add_edge(
+                                route_key,
+                                target_key,
+                                edge_type,
+                                weight=1.0,
+                                method=route.method,
+                            )
 
     def _create_containment_edges(self, files: list[dict]):
         dir_keys: dict[str, str] = {}
