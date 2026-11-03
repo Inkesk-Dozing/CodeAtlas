@@ -235,22 +235,81 @@ class GraphExtractor:
                     self._add_edge(mw_key, route_key, "middleware_for")
 
     def _create_component_edges(self, files: list[dict]):
+        # Index components and hooks across all files
+        # Map: name -> list of node_keys (to support local file matches and cross-file matches)
+        component_nodes: dict[str, list[str]] = {}
+        hook_nodes: dict[str, list[str]] = {}
+
+        for f in files:
+            parsed: ParseResult | None = f.get("parsed")
+            if parsed is None:
+                continue
+            path = f["path"]
+            for comp in parsed.components:
+                c_key = f"{path}::{comp.name}::component"
+                component_nodes.setdefault(comp.name, []).append(c_key)
+            for hk in parsed.hooks:
+                h_key = f"{path}::{hk.name}::hook"
+                hook_nodes.setdefault(hk.name, []).append(h_key)
+
         for f in files:
             parsed: ParseResult | None = f.get("parsed")
             if parsed is None:
                 continue
 
             path = f["path"]
+            source_dir = "/".join(path.split("/")[:-1])
+            # Check imports in this file to prioritize cross-file imported targets
+            imported_symbols: dict[str, str] = {}
+            for imp in parsed.imports:
+                resolved_path = self._resolve_import(source_dir, imp.source, files)
+                if resolved_path:
+                    for name in imp.names:
+                        imported_symbols[name] = resolved_path
+
             for comp in parsed.components:
                 comp_key = f"{path}::{comp.name}::component"
 
                 for child in comp.metadata.get("renders", []):
-                    child_key = f"{path}::{child}::component"
-                    self._add_edge(comp_key, child_key, "renders")
+                    # Handle namespaced components (e.g. CustomModal.Header -> CustomModal)
+                    child_base = child.split(".")[0]
+                    target_key = None
+
+                    # 1. Match from explicit import
+                    if child_base in imported_symbols:
+                        target_path = imported_symbols[child_base]
+                        target_key = f"{target_path}::{child_base}::component"
+                    # 2. Match from same file
+                    elif any(k.startswith(f"{path}::") for k in component_nodes.get(child_base, [])):
+                        target_key = f"{path}::{child_base}::component"
+                    # 3. Match globally across repo
+                    elif component_nodes.get(child_base):
+                        target_key = component_nodes[child_base][0]
+                    else:
+                        # Fallback key in current file scope
+                        target_key = f"{path}::{child}::component"
+
+                    if target_key and target_key != comp_key:
+                        self._add_edge(comp_key, target_key, "renders")
 
                 for hook in comp.metadata.get("hooks_used", []):
-                    hook_key = f"{path}::{hook}::hook"
-                    self._add_edge(comp_key, hook_key, "uses_hook")
+                    target_key = None
+                    # 1. Match from explicit import
+                    if hook in imported_symbols:
+                        target_path = imported_symbols[hook]
+                        target_key = f"{target_path}::{hook}::hook"
+                    # 2. Match from same file
+                    elif any(k.startswith(f"{path}::") for k in hook_nodes.get(hook, [])):
+                        target_key = f"{path}::{hook}::hook"
+                    # 3. Match globally across repo
+                    elif hook_nodes.get(hook):
+                        target_key = hook_nodes[hook][0]
+                    else:
+                        # Fallback key in current file scope
+                        target_key = f"{path}::{hook}::hook"
+
+                    if target_key:
+                        self._add_edge(comp_key, target_key, "uses_hook")
 
     def _create_containment_edges(self, files: list[dict]):
         dir_keys: dict[str, str] = {}

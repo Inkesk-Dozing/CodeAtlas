@@ -19,6 +19,24 @@ _TREE_SITTER_AVAILABLE = False
 _TS_LANGUAGE = None
 _TSX_LANGUAGE = None
 
+# Comprehensive set of primitive HTML and SVG tags to distinguish from custom React/Vue components
+HTML_PRIMITIVE_TAGS: set[str] = {
+    "a", "abbr", "address", "area", "article", "aside", "audio", "b", "base", "bdi", "bdo",
+    "blockquote", "body", "br", "button", "canvas", "caption", "cite", "code", "col", "colgroup",
+    "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt", "em", "embed",
+    "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
+    "head", "header", "hgroup", "hr", "html", "i", "iframe", "img", "input", "ins", "kbd",
+    "label", "legend", "li", "link", "main", "map", "mark", "menu", "meta", "meter", "nav",
+    "noscript", "object", "ol", "optgroup", "option", "output", "p", "picture", "pre", "progress",
+    "q", "rp", "rt", "ruby", "s", "samp", "script", "search", "section", "select", "slot",
+    "small", "source", "span", "strong", "style", "sub", "summary", "sup", "table", "tbody",
+    "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "u",
+    "ul", "var", "video", "wbr",
+    # SVG tags
+    "svg", "animate", "circle", "clippath", "defs", "ellipse", "g", "line", "lineargradient",
+    "mask", "path", "pattern", "polygon", "polyline", "radialgradient", "rect", "stop", "text", "tspan",
+}
+
 try:
     import tree_sitter_typescript
     from tree_sitter import Language, Parser
@@ -454,6 +472,8 @@ class JavaScriptParser(BaseParser):
         hooks_used: set[str] = set()
         renders: set[str] = set()
         props: list[str] = []
+        prop_defaults: dict[str, str] = {}
+        props_interface: str | None = None
 
         # Walk children of node to extract JSX and hooks
         def walk_comp(n: Any) -> None:
@@ -466,17 +486,27 @@ class JavaScriptParser(BaseParser):
             elif n.type in ("jsx_opening_element", "jsx_self_closing_element"):
                 name_node = n.child_by_field_name("name")
                 if name_node:
-                    renders.add(name_node.text.decode("utf-8"))
+                    raw_tag = name_node.text.decode("utf-8")
+                    # Distinguish primitive HTML/SVG tags from custom React/Vue components
+                    tag_base = raw_tag.split(".")[0]
+                    if tag_base not in HTML_PRIMITIVE_TAGS and tag_base[0].isupper():
+                        renders.add(raw_tag)
             for c in n.children:
                 walk_comp(c)
 
         walk_comp(node)
 
-        # Extract props destructuring if present
+        # Extract props destructuring, default values, and interface annotation if present
         param_node = node.child_by_field_name("parameters")
         if param_node:
             for p in param_node.children:
                 if p.type in ("required_parameter", "optional_parameter"):
+                    # Check props type annotation, e.g. ({ title }: Props) or (props: UserCardProps)
+                    type_ann = p.child_by_field_name("type")
+                    if type_ann:
+                        raw_type = type_ann.text.decode("utf-8").lstrip(":").strip()
+                        props_interface = raw_type
+
                     pattern = p.child_by_field_name("pattern")
                     if pattern and pattern.type == "object_pattern":
                         for oc in pattern.children:
@@ -484,8 +514,17 @@ class JavaScriptParser(BaseParser):
                                 props.append(oc.text.decode("utf-8"))
                             elif oc.type == "object_assignment_pattern":
                                 left = oc.child_by_field_name("left")
+                                right = oc.child_by_field_name("right")
                                 if left:
-                                    props.append(left.text.decode("utf-8"))
+                                    p_name = left.text.decode("utf-8")
+                                    props.append(p_name)
+                                    if right:
+                                        prop_defaults[p_name] = right.text.decode("utf-8")
+                    elif pattern and pattern.type == "identifier":
+                        # Plain identifier (e.g. `props`)
+                        p_name = pattern.text.decode("utf-8")
+                        if p_name not in props:
+                            props.append(p_name)
 
         return ParsedSymbol(
             name=name,
@@ -496,7 +535,9 @@ class JavaScriptParser(BaseParser):
             metadata={
                 "hooks_used": list(hooks_used),
                 "props": props,
-                "renders": list(renders)[:10],
+                "prop_defaults": prop_defaults,
+                "props_interface": props_interface,
+                "renders": list(renders)[:20],
             },
         )
 
@@ -746,12 +787,27 @@ class JavaScriptParser(BaseParser):
                 block = "\n".join(lines[line_num - 1:end_line])
 
                 hooks = re.findall(r"\b(use[A-Z]\w*)\s*\(", block)
-                props_match = re.search(r"\(\s*\{([^}]*)\}", block)
+                props_match = re.search(r"\(\s*\{([^}]*)\}(?:\s*:\s*(\w+))?", block)
                 props = []
+                prop_defaults = {}
+                props_interface = props_match.group(2) if props_match and props_match.group(2) else None
                 if props_match:
-                    props = [p.strip().split(":")[0].strip() for p in props_match.group(1).split(",") if p.strip()]
+                    raw_props = [p.strip() for p in props_match.group(1).split(",") if p.strip()]
+                    for p in raw_props:
+                        if "=" in p:
+                            p_name, p_def = p.split("=", 1)
+                            p_clean = p_name.strip().split(":")[0].strip()
+                            props.append(p_clean)
+                            prop_defaults[p_clean] = p_def.strip()
+                        else:
+                            p_clean = p.split(":")[0].strip()
+                            props.append(p_clean)
 
-                renders = re.findall(r"<([A-Z]\w*)", block)
+                raw_renders = re.findall(r"<([A-Za-z0-9_.]+)", block)
+                renders = [
+                    r for r in raw_renders
+                    if r.split(".")[0] not in HTML_PRIMITIVE_TAGS and r.split(".")[0][0].isupper()
+                ]
 
                 components.append(ParsedSymbol(
                     name=name,
@@ -762,7 +818,9 @@ class JavaScriptParser(BaseParser):
                     metadata={
                         "hooks_used": list(set(hooks)),
                         "props": props,
-                        "renders": list(set(renders))[:10],
+                        "prop_defaults": prop_defaults,
+                        "props_interface": props_interface,
+                        "renders": list(set(renders))[:20],
                     },
                 ))
         return components
