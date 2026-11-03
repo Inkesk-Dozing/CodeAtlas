@@ -8,7 +8,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import settings
 from database import AsyncSessionLocal
 from models import IngestionError, IngestionTask, Repository
 from services.ingestion.broadcaster import progress_broadcaster
@@ -397,30 +396,9 @@ async def _extract_graph(
 
 
 async def _generate_embeddings(nodes: list[dict]) -> None:
-    if not nodes:
-        return
+    from services.ingestion.embeddings import vector_embedding_pipeline
 
-    try:
-        import httpx
-
-        batch_size = 32
-        for i in range(0, len(nodes), batch_size):
-            batch = nodes[i : i + batch_size]
-            for node in batch:
-                text = _build_embedding_text(node)
-                try:
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(
-                            f"{settings.ollama_url}/api/embeddings",
-                            json={"model": settings.ollama_embed_model, "prompt": text},
-                            timeout=15.0,
-                        )
-                        if resp.status_code == 200:
-                            node["embedding"] = resp.json().get("embedding")
-                except Exception as e:
-                    logger.warning("Embedding failed for %s: %s", node.get("name"), e)
-    except ImportError:
-        logger.warning("httpx not available, skipping embeddings")
+    await vector_embedding_pipeline.generate_embeddings_for_nodes(nodes)
 
 
 def _build_embedding_text(node: dict) -> str:
