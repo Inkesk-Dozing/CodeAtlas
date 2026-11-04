@@ -344,6 +344,7 @@ def _detect_language(suffix: str) -> str | None:
         ".py": "python",
         ".go": "go",
         ".rs": "rust",
+        ".prisma": "prisma",
         ".java": "java",
         ".rb": "ruby",
         ".php": "php",
