@@ -497,14 +497,20 @@ async def _persist_graph(
     return len(db_nodes), len(db_edges)
 
 
-async def trigger_incremental_update(repo_id: str, branch: str, sha: str) -> None:
+async def trigger_incremental_update(
+    repo_id: str,
+    branch: str,
+    sha: str,
+    before_sha: str | None = None,
+    diff_payload: str | None = None,
+) -> None:
     import uuid as uuid_mod
 
     async with AsyncSessionLocal() as db:
         task = IngestionTask(
             id=str(uuid_mod.uuid4()),
             repo_id=repo_id,
-            mode="webhook",
+            mode="incremental",
             status="queued",
             branch=branch,
             commit_sha=sha,
@@ -514,9 +520,57 @@ async def trigger_incremental_update(repo_id: str, branch: str, sha: str) -> Non
 
         task_id = task.id
 
-    task = asyncio.create_task(run_ingestion_pipeline(task_id, repo_id, "incremental", branch))
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
+    task_coro = asyncio.create_task(
+        run_incremental_pipeline(task_id, repo_id, branch, sha, before_sha, diff_payload)
+    )
+    _background_tasks.add(task_coro)
+    task_coro.add_done_callback(_background_tasks.discard)
+
+
+async def run_incremental_pipeline(
+    task_id: str,
+    repo_id: str,
+    branch: str,
+    sha: str,
+    before_sha: str | None = None,
+    diff_payload: str | None = None,
+) -> None:
+    from services.ingestion.diff_parser import IncrementalDiffEngine, parse_git_diff_name_status
+
+    async with AsyncSessionLocal() as db:
+        task = await db.get(IngestionTask, task_id)
+        repo = await db.get(Repository, repo_id)
+        if task is None or repo is None:
+            return
+
+        task.status = "running"
+        task.started_at = _utcnow()
+        await db.commit()
+
+        try:
+            changes = parse_git_diff_name_status(diff_payload or "")
+            engine = IncrementalDiffEngine(repo_id)
+            result = await engine.apply_incremental_diff(
+                db=db,
+                changes=changes,
+                file_contents={},
+                commit_sha=sha,
+            )
+
+            task.status = "completed"
+            task.progress = 100
+            task.completed_at = _utcnow()
+            task.nodes_created = result.get("nodes_count", 0)
+            task.edges_created = result.get("edges_count", 0)
+            await db.commit()
+
+        except Exception as e:
+            logger.exception("Incremental ingestion failed: task=%s", task_id)
+            task.status = "failed"
+            task.error = str(e)
+            task.completed_at = _utcnow()
+            await db.commit()
+            raise
 
 
 def _utcnow():
