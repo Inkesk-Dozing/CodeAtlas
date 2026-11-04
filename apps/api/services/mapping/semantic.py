@@ -128,3 +128,72 @@ class SemanticRetriever:
             logger.exception("Error executing pgvector semantic candidate retrieval")
             return {}
 
+
+@dataclass
+class NearestNeighborResult:
+    id: str
+    name: str
+    path: str
+    type: str
+    similarity_score: float
+    distance: float
+
+
+async def query_nearest_neighbors(
+    db: AsyncSession,
+    repo_id: str,
+    vector: list[float],
+    top_k: int = 10,
+    ef_search: int = 40,
+) -> list[NearestNeighborResult]:
+    """Execute parameterized nearest-neighbor query with strict repository_id scoping.
+
+    Utilizes the tuned HNSW index on code_nodes(embedding vector_cosine_ops)
+    with configured m=16, ef_construction=64 and runtime ef_search tuning.
+    """
+    if not vector:
+        return []
+
+    vector_str = f"[{','.join(str(x) for x in vector)}]"
+
+    try:
+        await db.execute(text(f"SET LOCAL hnsw.ef_search = {int(ef_search)}"))
+    except Exception:
+        pass
+
+    sql = text(
+        """
+        SELECT id, name, path, type,
+               embedding <=> CAST(:qv AS vector) AS distance,
+               1 - (embedding <=> CAST(:qv AS vector)) AS similarity_score
+        FROM code_nodes
+        WHERE repo_id = :repo_id AND embedding IS NOT NULL
+        ORDER BY distance ASC
+        LIMIT :top_k
+        """
+    )
+
+    try:
+        result = await db.execute(sql, {"qv": vector_str, "repo_id": repo_id, "top_k": top_k})
+        neighbors: list[NearestNeighborResult] = []
+
+        for row in result.mappings():
+            raw_sim = float(row["similarity_score"] or 0.0)
+            dist = float(row["distance"] or 0.0)
+            neighbors.append(
+                NearestNeighborResult(
+                    id=str(row["id"]),
+                    name=str(row["name"]),
+                    path=str(row["path"]),
+                    type=str(row["type"]),
+                    similarity_score=max(0.0, min(1.0, raw_sim)),
+                    distance=max(0.0, dist),
+                )
+            )
+
+        return neighbors
+    except Exception:
+        logger.exception("Error executing nearest neighbor query")
+        return []
+
+

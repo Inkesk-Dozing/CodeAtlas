@@ -25,6 +25,8 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    worker_max_tasks_per_child=10,
+    worker_max_memory_per_child=500000,
     task_soft_time_limit=1800,
     task_time_limit=3600,
     result_expires=3600 * 6,

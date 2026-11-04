@@ -6,12 +6,10 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import settings
 from database import AsyncSessionLocal
-from models import CodeEdge, CodeNode, IngestionError, IngestionTask, Repository
+from models import IngestionError, IngestionTask, Repository
 from services.ingestion.broadcaster import progress_broadcaster
 
 logger = logging.getLogger(__name__)
@@ -110,6 +108,10 @@ async def run_ingestion_pipeline(
             )
 
             parsed = await _parse_files(files, repo.settings)
+            # Explicit garbage collection to release Tree-sitter C memory and AST nodes
+            import gc
+            gc.collect()
+
             task.files_processed = len(parsed)
             stage_timings["parse"] = time.time() - stage_start
             cumulative += STAGE_WEIGHTS["parse"]
@@ -395,30 +397,9 @@ async def _extract_graph(
 
 
 async def _generate_embeddings(nodes: list[dict]) -> None:
-    if not nodes:
-        return
+    from services.ingestion.embeddings import vector_embedding_pipeline
 
-    try:
-        import httpx
-
-        batch_size = 32
-        for i in range(0, len(nodes), batch_size):
-            batch = nodes[i : i + batch_size]
-            for node in batch:
-                text = _build_embedding_text(node)
-                try:
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(
-                            f"{settings.ollama_url}/api/embeddings",
-                            json={"model": settings.ollama_embed_model, "prompt": text},
-                            timeout=15.0,
-                        )
-                        if resp.status_code == 200:
-                            node["embedding"] = resp.json().get("embedding")
-                except Exception as e:
-                    logger.warning("Embedding failed for %s: %s", node.get("name"), e)
-    except ImportError:
-        logger.warning("httpx not available, skipping embeddings")
+    await vector_embedding_pipeline.generate_embeddings_for_nodes(nodes)
 
 
 def _build_embedding_text(node: dict) -> str:
@@ -445,57 +426,9 @@ async def _persist_graph(
     nodes: list[dict],
     edges: list[dict],
 ) -> tuple[int, int]:
-    await db.execute(delete(CodeEdge).where(CodeEdge.repo_id == repo_id))
-    await db.execute(delete(CodeNode).where(CodeNode.repo_id == repo_id))
-    await db.flush()
+    from services.ingestion.persistence import batch_graph_persistence
 
-    path_to_id: dict[str, str] = {}
-    db_nodes = []
-
-    for n in nodes:
-        node = CodeNode(
-            id=n["id"],
-            repo_id=repo_id,
-            type=n["type"],
-            name=n["name"],
-            path=n["path"],
-            language=n.get("language"),
-            meta=n.get("metadata", {}),
-            summary=n.get("summary"),
-            content_hash=n.get("content_hash"),
-            embedding=n.get("embedding"),
-        )
-        db_nodes.append(node)
-        key = f"{n['path']}::{n['name']}::{n['type']}"
-        path_to_id[key] = n["id"]
-
-    db.add_all(db_nodes)
-    await db.flush()
-
-    db_edges = []
-    for e in edges:
-        source_key = e.get("source_key")
-        target_key = e.get("target_key")
-        source_id = path_to_id.get(source_key)
-        target_id = path_to_id.get(target_key)
-
-        if source_id and target_id:
-            db_edges.append(
-                CodeEdge(
-                    id=e["id"],
-                    repo_id=repo_id,
-                    source_id=source_id,
-                    target_id=target_id,
-                    type=e["type"],
-                    weight=e.get("weight", 1.0),
-                    meta=e.get("metadata", {}),
-                )
-            )
-
-    db.add_all(db_edges)
-    await db.flush()
-
-    return len(db_nodes), len(db_edges)
+    return await batch_graph_persistence.persist_graph(db, repo_id, nodes, edges)
 
 
 async def trigger_incremental_update(

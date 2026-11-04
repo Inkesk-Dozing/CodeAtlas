@@ -185,7 +185,20 @@ class CodeNode(Base, TimestampMixin):
         Index("idx_nodes_repo_type", "repo_id", "type"),
         Index("idx_nodes_repo_path", "repo_id", "path"),
         Index("idx_nodes_repo_language", "repo_id", "language"),
-        Index("idx_nodes_embedding", "embedding", postgresql_using="hnsw"),
+        Index(
+            "idx_nodes_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index(
+            "idx_nodes_trgm_name_path",
+            "name",
+            "path",
+            postgresql_using="gin",
+            postgresql_ops={"name": "gin_trgm_ops", "path": "gin_trgm_ops"},
+        ),
     )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
@@ -222,6 +235,8 @@ class CodeEdge(Base, TimestampMixin):
         UniqueConstraint("repo_id", "source_id", "target_id", "type", name="uq_edge_identity"),
         Index("idx_edges_source", "source_id"),
         Index("idx_edges_target", "target_id"),
+        Index("idx_edges_source_target", "source_id", "target_id"),
+        Index("idx_edges_target_source", "target_id", "source_id"),
         Index("idx_edges_type", "repo_id", "type"),
     )
 
