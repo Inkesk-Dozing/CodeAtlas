@@ -159,6 +159,7 @@ class PythonParser(BaseParser):
                         imports.append(ParsedImport(source=orig.text.decode("utf-8"), line=line_num))
         elif node.type == "import_from_statement":
             # e.g. from fastapi import APIRouter, Depends as dep
+            # Supports relative imports: from . import x, from ..services import y
             module_node = node.child_by_field_name("module_name")
             if not module_node:
                 # Fallback to finding dotted_name or relative_import before 'import'
@@ -179,6 +180,32 @@ class PythonParser(BaseParser):
                     names.append(c.text.decode("utf-8"))
             if source:
                 imports.append(ParsedImport(source=source, names=names, line=line_num))
+
+    @staticmethod
+    def _calculate_ts_complexity(node: Any) -> int:
+        """Calculate cyclomatic complexity from tree-sitter AST nodes."""
+        complexity = 1
+
+        def walk(n: Any) -> None:
+            nonlocal complexity
+            if n.type in (
+                "if_statement",
+                "elif_clause",
+                "for_statement",
+                "while_statement",
+                "except_clause",
+                "with_statement",
+                "assert_statement",
+                "conditional_expression",
+            ):
+                complexity += 1
+            elif n.type == "boolean_operator":
+                complexity += 1
+            for child in n.children:
+                walk(child)
+
+        walk(node)
+        return complexity
 
     def _handle_function_node(
         self,
@@ -204,21 +231,48 @@ class PythonParser(BaseParser):
         # Check async
         is_async = any(c.type == "async" for c in node.children)
 
-        # Extract parameters
+        # Extract parameters, type annotations, and default values
         params: list[str] = []
+        param_types: dict[str, str] = {}
+        param_defaults: dict[str, str] = {}
         param_node = node.child_by_field_name("parameters")
         if param_node:
             for p in param_node.children:
                 if p.type in ("identifier", "typed_parameter", "default_parameter", "typed_default_parameter"):
-                    p_name = p.child_by_field_name("name")
+                    # Find parameter identifier
+                    p_name = ""
+                    p_type = ""
+                    p_default = ""
+                    for sub in p.children:
+                        if sub.type == "identifier" and not p_name:
+                            p_name = sub.text.decode("utf-8")
+                        elif sub.type == "type":
+                            p_type = sub.text.decode("utf-8")
+                        elif sub.type not in (":", "=", "type", "identifier"):
+                            p_default = sub.text.decode("utf-8")
+
+                    if not p_name and p.type == "identifier":
+                        p_name = p.text.decode("utf-8")
+
                     if p_name:
-                        params.append(p_name.text.decode("utf-8"))
-                    elif p.type == "identifier":
-                        params.append(p.text.decode("utf-8"))
-                    elif p.children and p.children[0].type == "identifier":
-                        params.append(p.children[0].text.decode("utf-8"))
+                        params.append(p_name)
+                        if p_type:
+                            param_types[p_name] = p_type
+                        if p_default:
+                            param_defaults[p_name] = p_default
+                elif p.type in ("list_splat_pattern", "dictionary_splat_pattern"):
+                    for sub in p.children:
+                        if sub.type == "identifier":
+                            prefix = "*" if p.type == "list_splat_pattern" else "**"
+                            p_name = f"{prefix}{sub.text.decode('utf-8')}"
+                            params.append(p_name)
+
+        # Return type annotation
+        return_type_node = node.child_by_field_name("return_type")
+        return_type = return_type_node.text.decode("utf-8").lstrip("->").strip() if return_type_node else None
 
         docstring = self._extract_node_docstring(node)
+        complexity = self._calculate_ts_complexity(node)
 
         # Check routes
         is_route = False
@@ -230,7 +284,8 @@ class PythonParser(BaseParser):
                 if route_match:
                     method = route_match.group(1).upper()
                     if method == "ROUTE":
-                        method = "GET"
+                        methods_match = re.search(r"methods\s*=\s*\[\s*['\"](\w+)['\"]", dec_clean)
+                        method = methods_match.group(1).upper() if methods_match else "GET"
                     path = route_match.group(2)
                     routes.append(ParsedRoute(
                         method=method,
@@ -239,17 +294,40 @@ class PythonParser(BaseParser):
                         framework=framework,
                         line=line_num,
                     ))
+            elif dec_clean.startswith("api_view"):
+                is_route = True
+                methods_match = re.search(r"api_view\s*\(\s*\[\s*['\"](\w+)['\"]", dec_clean)
+                method = methods_match.group(1).upper() if methods_match else "GET"
+                routes.append(ParsedRoute(
+                    method=method,
+                    path="",
+                    handler=name,
+                    framework="django" if framework == "unknown" else framework,
+                    line=line_num,
+                ))
+
+        sig = f"{name}({', '.join(params)})"
+        if return_type:
+            sig = f"{sig} -> {return_type}"
 
         functions.append(ParsedSymbol(
             name=name,
             kind="function",
             line=line_num,
             end_line=end_line,
-            signature=f"{name}({', '.join(params)})",
+            signature=sig,
             docstring=docstring,
             is_async=is_async,
             parent=parent_class,
-            metadata={"decorators": decorators, "params": params, "is_route": is_route},
+            metadata={
+                "decorators": decorators,
+                "params": params,
+                "param_types": param_types,
+                "param_defaults": param_defaults,
+                "return_type": return_type,
+                "is_route": is_route,
+                "complexity": {"cyclomatic": complexity},
+            },
         ))
 
     def _handle_decorated_node(
@@ -314,10 +392,11 @@ class PythonParser(BaseParser):
 
         docstring = self._extract_node_docstring(node)
 
-        # Check methods in class body
+        # Check methods and variables in class body
         methods: list[str] = []
         body_node = node.child_by_field_name("body")
         fields: list[str] = []
+        class_variables: list[dict[str, Any]] = []
 
         if body_node:
             for item in body_node.children:
@@ -344,6 +423,22 @@ class PythonParser(BaseParser):
                     f_match = re.search(r"(\w+)\s*=\s*(?:db\.Column|Column|Mapped|Mapped\[)", stmt_text)
                     if f_match:
                         fields.append(f_match.group(1))
+
+                    # Extract class variables and type hints
+                    for sub in item.children:
+                        if sub.type == "assignment":
+                            left_node = sub.child_by_field_name("left")
+                            type_node = sub.child_by_field_name("type")
+                            right_node = sub.child_by_field_name("right")
+                            if left_node and left_node.type == "identifier":
+                                v_name = left_node.text.decode("utf-8")
+                                v_type = type_node.text.decode("utf-8") if type_node else None
+                                v_val = right_node.text.decode("utf-8") if right_node else None
+                                class_variables.append({
+                                    "name": v_name,
+                                    "type": v_type,
+                                    "value": v_val,
+                                })
 
         is_service = any(
             d.split("(")[0] in ("service", "Service", "injectable", "component", "Component", "router", "Router", "APIRouter")
@@ -389,6 +484,8 @@ class PythonParser(BaseParser):
                 "bases": bases,
                 "decorators": decorators,
                 "methods": methods,
+                "class_variables": class_variables,
+                "variables": [v["name"] for v in class_variables],
                 "is_service": is_service,
             },
         ))
@@ -414,8 +511,8 @@ class PythonParser(BaseParser):
             str_child = first_stmt.children[0]
             if str_child.type == "string":
                 val = str_child.text.decode("utf-8")
-                # Strip triple or single quotes
-                val = re.sub(r'^(?:"""|\'\'\'|"|\')', "", val)
+                # Strip prefix (r, u, f, b) and triple/single quotes
+                val = re.sub(r'^[rRuUbBfF]?(?:"""|\'\'\'|"|\')', "", val)
                 val = re.sub(r'(?:"""|\'\'\'|"|\')$', "", val)
                 return val.strip()
         return None
@@ -468,13 +565,37 @@ class PythonParser(BaseParser):
 
                 line_num = content[:match.start()].count("\n") + 1
                 params_str = match.group(2)
-                params = [p.strip().split(":")[0].split("=")[0].strip() for p in params_str.split(",") if p.strip()]
+                params: list[str] = []
+                param_types: dict[str, str] = {}
+                param_defaults: dict[str, str] = {}
+                for p in params_str.split(","):
+                    p = p.strip()
+                    if not p:
+                        continue
+                    p_name = p
+                    p_type = None
+                    p_default = None
+                    if ":" in p_name:
+                        parts = p_name.split(":", 1)
+                        p_name = parts[0].strip()
+                        type_and_default = parts[1].strip()
+                        if "=" in type_and_default:
+                            p_type, p_default = [x.strip() for x in type_and_default.split("=", 1)]
+                        else:
+                            p_type = type_and_default
+                    elif "=" in p_name:
+                        p_name, p_default = [x.strip() for x in p_name.split("=", 1)]
+                    params.append(p_name)
+                    if p_type:
+                        param_types[p_name] = p_type
+                    if p_default:
+                        param_defaults[p_name] = p_default
 
                 docstring = self._extract_docstring(lines, line_num - 1)
                 is_async = "async def" in content[match.start():match.start() + 20]
 
                 decorator_block = self._get_decorators(content, match.start())
-                is_route = any(d.startswith(("app.", "router.", "route")) for d in decorator_block)
+                is_route = any(d.startswith(("app.", "router.", "route", "api.")) for d in decorator_block)
 
                 functions.append(ParsedSymbol(
                     name=name,
@@ -483,7 +604,14 @@ class PythonParser(BaseParser):
                     signature=f"{name}({', '.join(params)})",
                     docstring=docstring,
                     is_async=is_async,
-                    metadata={"decorators": decorator_block, "params": params, "is_route": is_route},
+                    metadata={
+                        "decorators": decorator_block,
+                        "params": params,
+                        "param_types": param_types,
+                        "param_defaults": param_defaults,
+                        "is_route": is_route,
+                        "complexity": {"cyclomatic": 1},
+                    },
                 ))
         return functions
 
@@ -513,6 +641,20 @@ class PythonParser(BaseParser):
                     for d in all_decorators
                 )
 
+                class_variables = []
+                for v_match in re.finditer(r"^\s{4,8}([a-zA-Z_]\w*)(?:\s*:\s*([^=\n]+))?(?:\s*=\s*([^\n]+))?", block, re.MULTILINE):
+                    v_name = v_match.group(1)
+                    if v_name in ("def", "class", "async", "return", "pass", "yield"):
+                        continue
+                    v_type = v_match.group(2).strip() if v_match.group(2) else None
+                    v_val = v_match.group(3).strip() if v_match.group(3) else None
+                    if v_type or v_val:
+                        class_variables.append({
+                            "name": v_name,
+                            "type": v_type,
+                            "value": v_val,
+                        })
+
                 classes.append(ParsedSymbol(
                     name=name,
                     kind="class",
@@ -524,6 +666,8 @@ class PythonParser(BaseParser):
                         "bases": [b.strip() for b in bases.split(",") if b.strip()],
                         "decorators": all_decorators,
                         "methods": methods,
+                        "class_variables": class_variables,
+                        "variables": [v["name"] for v in class_variables],
                         "is_service": is_service,
                     },
                 ))
