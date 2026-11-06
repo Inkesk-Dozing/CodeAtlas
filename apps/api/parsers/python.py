@@ -12,6 +12,7 @@ from parsers.base import (
     ParseResult,
 )
 from parsers.orm import PythonORMParser
+from parsers.routes import extract_route_params
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,7 @@ class PythonParser(BaseParser):
                         handler=name,
                         framework=framework,
                         line=line_num,
+                        params=extract_route_params(path),
                     ))
 
         functions.append(ParsedSymbol(
@@ -397,12 +399,14 @@ class PythonParser(BaseParser):
         expr_text = node.text.decode("utf-8")
         match = re.search(r"path\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*(\w+)", expr_text)
         if match:
+            path_val = match.group(1)
             routes.append(ParsedRoute(
                 method="GET",
-                path=match.group(1),
+                path=path_val,
                 handler=match.group(2),
                 framework=framework,
                 line=node.start_point[0] + 1,
+                params=extract_route_params(path_val),
             ))
 
     def _extract_node_docstring(self, node: Any) -> str | None:
@@ -556,6 +560,7 @@ class PythonParser(BaseParser):
                     handler=handler,
                     framework=framework,
                     line=line_num,
+                    params=extract_route_params(path),
                 ))
         return routes
 

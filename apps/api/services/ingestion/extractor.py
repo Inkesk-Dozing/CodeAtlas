@@ -169,6 +169,7 @@ class GraphExtractor:
                         "controller": route.handler,
                         "framework": route.framework,
                         "middleware": route.middleware,
+                        "params": route.params,
                         "line": route.line,
                     },
                 )
@@ -230,7 +231,10 @@ class GraphExtractor:
                 route_key = f"{path}::{route.method} {route.path}::route"
                 if route.handler:
                     handler_key = f"{path}::{route.handler}::function"
+                    # Add primary routes_to edge
                     self._add_edge(route_key, handler_key, "routes_to")
+                    # Also add handles_route edge from controller function to route per specification
+                    self._add_edge(handler_key, route_key, "handles_route")
 
                 for mw in route.middleware:
                     mw_key = f"{path}::{mw}::function"
