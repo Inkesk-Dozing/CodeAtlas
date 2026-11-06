@@ -277,31 +277,20 @@ async def run_ingestion_pipeline(
 
 
 async def _clone_repository(repo: Repository, branch: str | None) -> list[dict[str, Any]]:
-    import tempfile
+    from services.ingestion.cloner import ShallowRepositoryCloner
 
     target_branch = branch or repo.default_branch
     url = repo.clone_url
 
-    tmp_dir = Path(tempfile.mkdtemp(prefix="codeatlas_"))
-    try:
-        import asyncio
+    # Check for installation token in repo settings or auth context if available
+    token = repo.settings.get("github_token") or repo.settings.get("installation_token")
+    cloner = ShallowRepositoryCloner(token=token)
 
-        proc = await asyncio.create_subprocess_exec(
-            "git", "clone", "--depth=1", "--filter=blob:none",
-            "--branch", target_branch, url, str(tmp_dir / "repo"),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            raise RuntimeError(f"Git clone failed: {stderr.decode()}")
-
-        repo_path = tmp_dir / "repo"
-        files = _scan_files(repo_path, repo.settings.get("ignored_paths", []))
-        return files
-    finally:
-        import shutil
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+    return await cloner.clone_and_scan(
+        clone_url=url,
+        branch=target_branch,
+        ignored_patterns=repo.settings.get("ignored_paths", []),
+    )
 
 
 def _scan_files(base_path: Path, ignored_patterns: list[str]) -> list[dict[str, Any]]:
