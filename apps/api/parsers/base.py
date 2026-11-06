@@ -26,6 +26,9 @@ class ParsedImport:
     is_default: bool = False
     is_namespace: bool = False
     line: int = 0
+    is_internal: bool = False
+    is_monorepo: bool = False
+    is_third_party: bool = False
 
 
 @dataclass
