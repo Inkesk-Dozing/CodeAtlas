@@ -36,6 +36,7 @@ class ParsedRoute:
     middleware: list[str] = field(default_factory=list)
     framework: str = ""
     line: int = 0
+    params: list[str] = field(default_factory=list)
 
 
 @dataclass

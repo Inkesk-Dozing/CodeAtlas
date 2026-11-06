@@ -3,6 +3,7 @@ from parsers.golang import GoParser
 from parsers.javascript import JavaScriptParser
 from parsers.orm import PrismaParser
 from parsers.python import PythonParser
+from parsers.routes import JavaSpringParser
 from parsers.rust import RustParser
 
 _parsers: dict[str, BaseParser] = {}
@@ -22,6 +23,8 @@ def get_parser(language: str) -> BaseParser | None:
         parser = RustParser()
     elif language in ("prisma", "schema.prisma"):
         parser = PrismaParser()
+    elif language in ("java", "spring"):
+        parser = JavaSpringParser()
     else:
         return None
 
@@ -29,4 +32,4 @@ def get_parser(language: str) -> BaseParser | None:
     return parser
 
 
-__all__ = ["BaseParser", "GoParser", "ParseResult", "PrismaParser", "RustParser", "get_parser"]
+__all__ = ["BaseParser", "GoParser", "JavaSpringParser", "ParseResult", "PrismaParser", "RustParser", "get_parser"]
