@@ -11,6 +11,7 @@ from parsers.base import (
     ParsedSymbol,
     ParseResult,
 )
+from parsers.routes import extract_nextjs_app_routes, extract_route_params
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,12 @@ class JavaScriptParser(BaseParser):
             hooks,
             models,
         )
+
+        # Detect Next.js 14 App Router endpoints (e.g. app/**/route.ts)
+        nextjs_routes = extract_nextjs_app_routes(path, content)
+        for nr in nextjs_routes:
+            if not any(r.method == nr.method and r.path == nr.path for r in routes):
+                routes.append(nr)
 
         result.imports = imports
         result.exports = list(exports)
@@ -588,6 +595,7 @@ class JavaScriptParser(BaseParser):
                 middleware=middleware,
                 framework=framework,
                 line=line_num,
+                params=extract_route_params(path),
             ))
 
     def _extract_sig(self, node: Any, name: str) -> str:
@@ -620,6 +628,13 @@ class JavaScriptParser(BaseParser):
         result.classes = self._extract_classes_regex(content, lines)
         result.interfaces = self._extract_interfaces_regex(content, lines)
         result.routes = self._extract_routes_regex(content, lines)
+
+        # Detect Next.js 14 App Router endpoints
+        nextjs_routes = extract_nextjs_app_routes(path, content)
+        for nr in nextjs_routes:
+            if not any(r.method == nr.method and r.path == nr.path for r in result.routes):
+                result.routes.append(nr)
+
         result.components = self._extract_components_regex(content, lines)
         result.hooks = self._extract_hooks_regex(content)
         result.models = self._extract_models_regex(content, lines)
@@ -774,6 +789,7 @@ class JavaScriptParser(BaseParser):
                         middleware=middleware,
                         framework=framework,
                         line=line_num,
+                        params=extract_route_params(path),
                     ))
         return routes
 
