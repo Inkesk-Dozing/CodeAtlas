@@ -198,9 +198,7 @@ class PythonParser(BaseParser):
                 "with_statement",
                 "assert_statement",
                 "conditional_expression",
-            ):
-                complexity += 1
-            elif n.type == "boolean_operator":
+            ) or n.type == "boolean_operator":
                 complexity += 1
             for child in n.children:
                 walk(child)
