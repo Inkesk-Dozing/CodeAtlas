@@ -938,7 +938,7 @@ class JavaScriptParser(BaseParser):
                             is_monorepo=c_info["is_monorepo"],
                             is_third_party=c_info["is_third_party"],
                         ))
-                    elif groups[0] and not groups[1]:
+                    elif groups and groups[0]:
                         c_info = classify_js_import(groups[0])
                         imports.append(ParsedImport(
                             source=groups[0],
