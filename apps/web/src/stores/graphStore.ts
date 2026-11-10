@@ -50,6 +50,8 @@ export interface GraphEdge {
   weight: number;
 }
 
+export type LayoutOrientation = 'LR' | 'TB';
+
 interface GraphState {
   nodes: Map<string, GraphNode>;
   edges: Map<string, GraphEdge>;
@@ -63,6 +65,7 @@ interface GraphState {
   progress: number;
   stage: string | null;
   totalNodes: number;
+  layoutOrientation: LayoutOrientation;
 
   setGraph: (nodes: GraphNode[], edges: GraphEdge[], total?: number) => void;
   selectNode: (id: string | null) => void;
@@ -73,6 +76,7 @@ interface GraphState {
   clearFilters: () => void;
   setLoading: (loading: boolean) => void;
   setProgress: (progress: number, stage?: string) => void;
+  setLayoutOrientation: (orientation: LayoutOrientation) => void;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -88,6 +92,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   progress: 0,
   stage: null,
   totalNodes: 0,
+  layoutOrientation: 'LR',
 
   setGraph: (nodes, edges, total = 0) => {
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -125,6 +130,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   setProgress: (progress, stage) => set({ progress, stage: stage ?? get().stage }),
+
+  setLayoutOrientation: (layoutOrientation) => set({ layoutOrientation }),
 }));
 
 export interface GraphFilters {

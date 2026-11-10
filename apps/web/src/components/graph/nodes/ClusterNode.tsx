@@ -31,8 +31,18 @@ function ClusterNodeInner({ data }: NodeProps) {
       `}
       title="Double-click to expand or collapse"
     >
-      <Handle type="target" position={Position.Top} className="opacity-0" isConnectable={false} />
-      <Handle type="source" position={Position.Bottom} className="opacity-0" isConnectable={false} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary/80 transition-colors hover:!bg-primary"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary/80 transition-colors hover:!bg-primary"
+      />
+      <Handle type="target" position={Position.Top} className="opacity-0 pointer-events-none" isConnectable={false} />
+      <Handle type="source" position={Position.Bottom} className="opacity-0 pointer-events-none" isConnectable={false} />
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-hidden">

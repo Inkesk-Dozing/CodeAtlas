@@ -1,6 +1,7 @@
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
 import type { Edge, Node } from '@xyflow/react';
 import { MarkerType } from '@xyflow/react';
+import { layoutWithDagre, type LayoutOrientation } from './dagreLayout';
 
 export interface ClusterInfo {
   id: string; // cluster prefix path, e.g., "apps/api"
@@ -10,6 +11,27 @@ export interface ClusterInfo {
   childClusterIds: Set<string>;
   parentClusterId: string | null;
   fileCount: number;
+}
+
+export function getNodeRendererType(nodeType: string): string {
+  switch (nodeType) {
+    case 'file':
+      return 'file';
+    case 'function':
+    case 'method':
+      return 'function';
+    case 'class':
+    case 'model':
+    case 'service':
+    case 'controller':
+      return 'class';
+    case 'route':
+      return 'route';
+    case 'component':
+      return 'component';
+    default:
+      return 'base';
+  }
 }
 
 /**
@@ -123,6 +145,7 @@ export function layoutClusteredGraph(
   rawEdges: GraphEdge[],
   collapsedClusters: Set<string>,
   maxDepth = 4,
+  orientation: LayoutOrientation = 'LR',
 ): ClusteredGraphResult {
   const clusters = buildClusterHierarchy(rawNodes, maxDepth);
 
@@ -140,11 +163,6 @@ export function layoutClusteredGraph(
     }
   }
 
-  // Assign layers via BFS across active nodes and collapsed clusters
-  const posMap = new Map<string, { x: number; y: number }>();
-  const adj = new Map<string, string[]>();
-  const inDeg = new Map<string, number>();
-
   const allItemIds = new Set<string>();
   for (const n of activeNodes) {
     allItemIds.add(n.id);
@@ -157,11 +175,6 @@ export function layoutClusteredGraph(
         allItemIds.add(`cluster:${clusterId}`);
       }
     }
-  }
-
-  for (const id of allItemIds) {
-    inDeg.set(id, 0);
-    adj.set(id, []);
   }
 
   // Map edges to their effective endpoints (routing to collapsed clusters if target/source is inside)
@@ -191,46 +204,40 @@ export function layoutClusteredGraph(
           type: e.type,
           count: 1,
         });
-        adj.get(effSource)?.push(effTarget);
-        inDeg.set(effTarget, (inDeg.get(effTarget) || 0) + 1);
       }
     }
   }
 
-  // BFS layering
-  const layer = new Map<string, number>();
-  const queue: string[] = [];
-  for (const [id, deg] of inDeg) {
-    if (deg === 0) {
-      layer.set(id, 0);
-      queue.push(id);
-    }
+  // Prepare items and edges for Dagre hierarchical layout
+  const dagreItems: Array<{ id: string; width: number; height: number }> = [];
+
+  for (const n of activeNodes) {
+    dagreItems.push({ id: n.id, width: 260, height: 80 });
   }
 
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const currentLayer = layer.get(current) || 0;
-    for (const neighbor of adj.get(current) || []) {
-      if (!layer.has(neighbor)) {
-        layer.set(neighbor, currentLayer + 1);
-        queue.push(neighbor);
+  for (const [clusterId] of clusters) {
+    if (collapsedClusters.has(clusterId)) {
+      const parent = findCollapsedAncestor(clusterId + '/sub', collapsedClusters, maxDepth);
+      if (parent === clusterId) {
+        dagreItems.push({ id: `cluster:${clusterId}`, width: 280, height: 90 });
       }
     }
   }
 
-  // Position assignment
-  const layers = new Map<number, string[]>();
-  for (const id of allItemIds) {
-    const l = layer.get(id) ?? 0;
-    if (!layers.has(l)) layers.set(l, []);
-    layers.get(l)!.push(id);
-  }
+  const dagreEdges = Array.from(effectiveEdgesMap.values()).map((eff) => ({
+    source: eff.source,
+    target: eff.target,
+  }));
 
-  for (const [l, ids] of layers) {
-    ids.forEach((id, idx) => {
-      posMap.set(id, { x: l * 340, y: idx * 130 - (ids.length * 65) });
-    });
-  }
+  const dagreResult = layoutWithDagre(dagreItems, dagreEdges, {
+    orientation,
+    nodeWidth: 260,
+    nodeHeight: 80,
+    nodeSep: 50,
+    rankSep: 90,
+  });
+
+  const posMap = dagreResult.positions;
 
   // Construct React Flow Nodes
   const nodes: Node[] = [];
@@ -240,7 +247,7 @@ export function layoutClusteredGraph(
     const pos = posMap.get(n.id) || { x: 0, y: 0 };
     nodes.push({
       id: n.id,
-      type: 'base',
+      type: getNodeRendererType(n.type),
       position: pos,
       data: {
         node: n,

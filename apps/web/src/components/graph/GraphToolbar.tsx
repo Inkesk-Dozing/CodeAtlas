@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Clock,
   Database,
+  ArrowRight,
+  ArrowDown,
 } from 'lucide-react';
 import { useGraphStore } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -23,8 +25,17 @@ interface GraphToolbarProps {
 }
 
 export function GraphToolbar({ repoName, refreshing = false, onRefresh }: GraphToolbarProps) {
-  const { filterTypes, toggleFilterType, clearFilters, searchQuery, setSearchQuery, rawNodes, isLoading } =
-    useGraphStore();
+  const {
+    filterTypes,
+    toggleFilterType,
+    clearFilters,
+    searchQuery,
+    setSearchQuery,
+    rawNodes,
+    isLoading,
+    layoutOrientation,
+    setLayoutOrientation,
+  } = useGraphStore();
   const activePanel = useUIStore((s) => s.activePanel);
   const openPanel = useUIStore((s) => s.openPanel);
   const closePanel = useUIStore((s) => s.closePanel);
@@ -106,6 +117,34 @@ export function GraphToolbar({ repoName, refreshing = false, onRefresh }: GraphT
             </button>
           )}
         </div>
+      </div>
+
+      {/* Layout Orientation Toggle */}
+      <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-xs">
+        <button
+          onClick={() => setLayoutOrientation('LR')}
+          className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+            layoutOrientation === 'LR'
+              ? 'bg-primary text-primary-foreground font-medium'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          title="Left-to-Right Layout"
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+          <span>LR</span>
+        </button>
+        <button
+          onClick={() => setLayoutOrientation('TB')}
+          className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+            layoutOrientation === 'TB'
+              ? 'bg-primary text-primary-foreground font-medium'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          title="Top-to-Bottom Layout"
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+          <span>TB</span>
+        </button>
       </div>
 
       <div className="flex-1" />
