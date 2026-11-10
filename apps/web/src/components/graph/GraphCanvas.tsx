@@ -17,8 +17,15 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { BaseNode } from './nodes/BaseNode';
-import { ClusterNode } from './nodes/ClusterNode';
+import {
+  BaseNode,
+  ClusterNode,
+  ComponentNode,
+  ClassNode,
+  FileNode,
+  FunctionNode,
+  RouteNode,
+} from './nodes';
 import { FlowEdge } from './edges/BaseEdge';
 import { useGraphStore, getVisibleNodes } from '@/stores/graphStore';
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
@@ -27,9 +34,14 @@ import { NODE_TYPE_COLORS } from '@codeatlas/shared';
 import { calculateVisibleNodeIds, shouldThrottleEdges } from '@/lib/graph/virtualization';
 import { layoutClusteredGraph } from '@/lib/graph/clustering';
 
-const nodeTypes = {
+export const nodeTypes = {
   base: BaseNode,
   cluster: ClusterNode,
+  file: FileNode,
+  function: FunctionNode,
+  class: ClassNode,
+  route: RouteNode,
+  component: ComponentNode,
 };
 const edgeTypes = { base: FlowEdge };
 

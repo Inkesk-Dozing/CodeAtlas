@@ -12,6 +12,27 @@ export interface ClusterInfo {
   fileCount: number;
 }
 
+export function getNodeRendererType(nodeType: string): string {
+  switch (nodeType) {
+    case 'file':
+      return 'file';
+    case 'function':
+    case 'method':
+      return 'function';
+    case 'class':
+    case 'model':
+    case 'service':
+    case 'controller':
+      return 'class';
+    case 'route':
+      return 'route';
+    case 'component':
+      return 'component';
+    default:
+      return 'base';
+  }
+}
+
 /**
  * Extracts a directory prefix up to maxDepth levels deep from a file path.
  * Examples for maxDepth=4:
@@ -240,7 +261,7 @@ export function layoutClusteredGraph(
     const pos = posMap.get(n.id) || { x: 0, y: 0 };
     nodes.push({
       id: n.id,
-      type: 'base',
+      type: getNodeRendererType(n.type),
       position: pos,
       data: {
         node: n,
