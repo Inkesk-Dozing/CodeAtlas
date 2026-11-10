@@ -60,8 +60,9 @@ function layoutNodes(
   rawNodes: GraphNode[],
   rawEdges: GraphEdge[],
   collapsedClusters: Set<string>,
+  orientation: 'LR' | 'TB' = 'LR',
 ): { nodes: Node[]; edges: Edge[] } {
-  return layoutClusteredGraph(rawNodes, rawEdges, collapsedClusters, 4);
+  return layoutClusteredGraph(rawNodes, rawEdges, collapsedClusters, 4, orientation);
 }
 
 interface GraphCanvasProps {
@@ -76,6 +77,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   const isLoading = useGraphStore((s) => s.isLoading);
   const stage = useGraphStore((s) => s.stage);
   const progress = useGraphStore((s) => s.progress);
+  const layoutOrientation = useGraphStore((s) => s.layoutOrientation);
 
   const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
 
@@ -97,8 +99,8 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   );
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => layoutNodes(visibleNodes, rawEdges, collapsedClusters),
-    [visibleNodes, rawEdges, collapsedClusters],
+    () => layoutNodes(visibleNodes, rawEdges, collapsedClusters, layoutOrientation),
+    [visibleNodes, rawEdges, collapsedClusters, layoutOrientation],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
