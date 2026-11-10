@@ -26,7 +26,7 @@ import {
   FunctionNode,
   RouteNode,
 } from './nodes';
-import { FlowEdge } from './edges/BaseEdge';
+import { customEdgeTypes } from './edges';
 import { useGraphStore, getVisibleNodes } from '@/stores/graphStore';
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -43,7 +43,7 @@ export const nodeTypes = {
   route: RouteNode,
   component: ComponentNode,
 };
-const edgeTypes = { base: FlowEdge };
+const edgeTypes = customEdgeTypes;
 
 interface ViewportInterceptorProps {
   onViewportChange: (viewport: Viewport) => void;
@@ -109,9 +109,12 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
     setEdges(layoutedEdges);
   }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const nodeId = node.id;
+      setSelectedEdgeId(null);
       useGraphStore.getState().selectNode(nodeId);
       useUIStore.getState().openPanel('node-detail');
       onNodeClick?.(nodeId);
@@ -119,8 +122,13 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
     [onNodeClick],
   );
 
+  const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    setSelectedEdgeId((prev) => (prev === edge.id ? null : edge.id));
+  }, []);
+
   const handlePaneClick = useCallback(() => {
     useGraphStore.getState().selectNode(null);
+    setSelectedEdgeId(null);
     useUIStore.getState().closePanel();
   }, []);
 
@@ -231,16 +239,46 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
     [nodes, selectedId, highlighted, activeVisibleNodeIds, toggleCluster],
   );
 
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    for (const n of rawNodes) {
+      map.set(n.id, n);
+    }
+    return map;
+  }, [rawNodes]);
+
+  const hasActiveSelection = Boolean(selectedId) || highlighted.size > 0 || Boolean(selectedEdgeId);
+
   const displayEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        data: {
-          ...e.data,
-          isThrottled: isEdgeThrottled,
-        },
-      })),
-    [edges, isEdgeThrottled],
+      edges.map((e) => {
+        let isConnected = false;
+        if (selectedEdgeId) {
+          isConnected = e.id === selectedEdgeId;
+        } else if (selectedId) {
+          isConnected = e.source === selectedId || e.target === selectedId;
+        } else if (highlighted.size > 0) {
+          isConnected = highlighted.has(e.source) || highlighted.has(e.target);
+        }
+
+        const isDimmed = hasActiveSelection && !isConnected;
+        const isHighlighted = hasActiveSelection && isConnected;
+        const sourceNode = nodeMap.get(e.source);
+        const targetNode = nodeMap.get(e.target);
+
+        return {
+          ...e,
+          data: {
+            ...e.data,
+            isThrottled: isEdgeThrottled,
+            isDimmed,
+            isHighlighted,
+            sourceName: sourceNode?.name || e.source,
+            targetName: targetNode?.name || e.target,
+          },
+        };
+      }),
+    [edges, isEdgeThrottled, selectedId, highlighted, selectedEdgeId, hasActiveSelection, nodeMap],
   );
 
   if (isLoading) {
@@ -286,6 +324,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

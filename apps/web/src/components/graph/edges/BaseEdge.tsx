@@ -1,24 +1,128 @@
 'use client';
 
-import { memo } from 'react';
-import { getBezierPath, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
+import React, { memo } from 'react';
+import {
+  EdgeLabelRenderer,
+  getBezierPath,
+  getSmoothStepPath,
+  type EdgeProps,
+} from '@xyflow/react';
+import { getEdgeStyle, type CustomEdgeData } from './types';
 
-const EDGE_STYLES: Record<string, { color: string; dash: string; width: number; animated: boolean }> = {
-  imports: { color: '#9CA3AF', dash: '6,4', width: 1.5, animated: false },
-  calls: { color: '#3B82F6', dash: 'none', width: 2, animated: true },
-  extends: { color: '#8B5CF6', dash: 'none', width: 2, animated: false },
-  implements: { color: '#8B5CF6', dash: '6,4', width: 1.5, animated: false },
-  routes_to: { color: '#10B981', dash: 'none', width: 2.5, animated: true },
-  renders: { color: '#06B6D4', dash: '4,4', width: 1.5, animated: false },
-  uses_hook: { color: '#F97316', dash: '4,4', width: 1.5, animated: false },
-  contains: { color: '#6B7280', dash: '2,4', width: 1, animated: false },
-  middleware_for: { color: '#F59E0B', dash: 'none', width: 2, animated: false },
-  has_model: { color: '#EC4899', dash: 'none', width: 1.5, animated: false },
-  reads: { color: '#10B981', dash: '6,4', width: 1, animated: false },
-  writes: { color: '#EF4444', dash: '6,4', width: 1, animated: false },
-};
+export interface EdgeTooltipProps {
+  id: string;
+  edgeType: string;
+  count: number;
+  isHighlighted: boolean;
+  isDimmed: boolean;
+  sourceName: string;
+  targetName: string;
+  edgeColor: string;
+  labelX: number;
+  labelY: number;
+}
 
-function BaseEdge({
+export function EdgeTooltip({
+  id,
+  edgeType,
+  count,
+  isHighlighted,
+  isDimmed,
+  sourceName,
+  targetName,
+  edgeColor,
+  labelX,
+  labelY,
+}: EdgeTooltipProps) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+        pointerEvents: 'all',
+      }}
+      className={`nodrag nopan group/edge transition-opacity duration-150 ${
+        isDimmed
+          ? 'opacity-20'
+          : isHighlighted
+            ? 'opacity-100 z-30'
+            : 'opacity-85 hover:opacity-100 z-10'
+      }`}
+      data-testid={`edge-label-${id}`}
+    >
+      {/* Badge Label */}
+      <div
+        className={`
+          flex items-center gap-1.5 rounded-full border bg-background/95 px-2 py-0.5 text-[9px] font-mono shadow-sm
+          transition-all duration-150 backdrop-blur-md cursor-pointer select-none
+          ${
+            isHighlighted
+              ? 'border-primary ring-1 ring-primary shadow-[0_0_10px_rgba(14,165,233,0.4)]'
+              : 'border-border/80 hover:border-primary/80 hover:shadow-md'
+          }
+        `}
+      >
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: edgeColor }}
+        />
+        <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+          {edgeType.replace(/_/g, ' ').toUpperCase()}
+        </span>
+        {count > 1 && (
+          <span className="font-bold text-primary">({count})</span>
+        )}
+      </div>
+
+      {/* Hover Tooltip: Caller / Callee Context */}
+      <div
+        className={`
+          pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 hidden -translate-x-1/2 flex-col gap-1.5
+          rounded-lg border border-border/90 bg-popover/95 p-2.5 shadow-xl backdrop-blur-md
+          group-hover/edge:flex min-w-[200px] max-w-[280px]
+        `}
+        data-testid={`edge-tooltip-${id}`}
+      >
+        <div className="flex items-center justify-between border-b border-border/50 pb-1 text-[9px] font-mono">
+          <span
+            className="font-bold uppercase tracking-wider"
+            style={{ color: edgeColor }}
+          >
+            {edgeType.replace(/_/g, ' ').toUpperCase()}
+          </span>
+          {count > 1 && (
+            <span className="text-muted-foreground font-semibold">
+              {count} connections
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 text-[11px] font-mono">
+          <span className="truncate font-semibold text-foreground" title={sourceName}>
+            {sourceName}
+          </span>
+          <span className="text-muted-foreground shrink-0">&rarr;</span>
+          <span className="truncate font-semibold text-foreground" title={targetName}>
+            {targetName}
+          </span>
+        </div>
+
+        <div className="space-y-0.5 border-t border-border/40 pt-1 text-[9px] text-muted-foreground">
+          <div>
+            <span className="font-semibold text-foreground/80">Caller:</span>{' '}
+            <span className="font-mono">{sourceName}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-foreground/80">Callee:</span>{' '}
+            <span className="font-mono">{targetName}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BaseEdgeInner({
   id,
   sourceX,
   sourceY,
@@ -27,14 +131,27 @@ function BaseEdge({
   sourcePosition,
   targetPosition,
   data,
-  markerEnd,
   style,
 }: EdgeProps) {
-  const edgeType = (data?.edgeType as string | undefined) || 'imports';
-  const isThrottled = Boolean(data?.isThrottled);
-  const isAggregated = Boolean(data?.isAggregated);
-  const count = typeof data?.count === 'number' ? data.count : 1;
-  const edgeStyle = EDGE_STYLES[edgeType] || EDGE_STYLES.imports;
+  const edgeData = (data || {}) as CustomEdgeData;
+  const edgeType = edgeData.edgeType || 'imports';
+  const isThrottled = Boolean(edgeData.isThrottled);
+  const isAggregated = Boolean(edgeData.isAggregated);
+  const isDimmed = Boolean(edgeData.isDimmed);
+  const isHighlighted = Boolean(edgeData.isHighlighted);
+  const count = typeof edgeData.count === 'number' ? edgeData.count : 1;
+  const edgeStyle = getEdgeStyle(edgeType);
+
+  const sourceName = edgeData.sourceName || 'Source';
+  const targetName = edgeData.targetName || 'Target';
+
+  // Opacity & styling based on dimming / highlighting
+  const opacity = isDimmed ? 0.15 : isHighlighted ? 1.0 : 0.75;
+  const strokeWidth = isHighlighted
+    ? edgeStyle.width + 1.5
+    : isAggregated
+      ? Math.min(edgeStyle.width + 1.2, 4)
+      : edgeStyle.width;
 
   // When throttled at zoom < 0.3, render a fast straight line without bezier calculations or label DOM
   if (isThrottled) {
@@ -46,56 +163,116 @@ function BaseEdge({
         x2={targetX}
         y2={targetY}
         stroke={edgeStyle.color}
-        strokeWidth={isAggregated ? 2.5 : 1}
-        opacity={0.5}
+        strokeWidth={strokeWidth}
+        opacity={opacity}
         style={style}
+        data-testid={`edge-throttled-${id}`}
       />
     );
   }
 
-  const [path, labelX, labelY] = getBezierPath({
+  // Choose between smooth step and bezier path based on edge specification
+  const pathParams = {
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
-    curvature: 0.25,
-  });
+  };
+
+  const [path, labelX, labelY] =
+    edgeStyle.pathType === 'smoothstep'
+      ? getSmoothStepPath({ ...pathParams, borderRadius: 8 })
+      : getBezierPath({ ...pathParams, curvature: edgeType === 'renders' ? 0.35 : 0.25 });
+
+  const markerId = `arrow-${edgeType}-${id}`;
+  const showParticles = edgeStyle.hasParticles || isHighlighted;
 
   return (
     <>
+      <svg className="overflow-visible pointer-events-none" style={{ position: 'absolute' }}>
+        <defs>
+          <marker
+            id={markerId}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path
+              d="M 0 1.5 L 10 5 L 0 8.5 z"
+              fill={edgeStyle.color}
+              opacity={opacity}
+            />
+          </marker>
+        </defs>
+      </svg>
+
+      {/* Main Edge Path */}
       <path
         id={id}
         d={path}
         stroke={edgeStyle.color}
-        strokeWidth={isAggregated ? Math.min(edgeStyle.width + 1.5, 4) : edgeStyle.width}
+        strokeWidth={strokeWidth}
         strokeDasharray={edgeStyle.dash !== 'none' ? edgeStyle.dash : undefined}
-        markerEnd={markerEnd}
-        className={edgeStyle.animated ? 'animate-pulse' : ''}
+        markerEnd={`url(#${markerId})`}
+        opacity={opacity}
+        className={`transition-all duration-150 ${
+          isHighlighted ? 'filter drop-shadow-[0_0_5px_currentColor]' : ''
+        }`}
         style={style}
+        data-testid={`edge-path-${id}`}
       />
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
+
+      {/* Subtle particle animation along active data flow */}
+      {showParticles && !isDimmed && (
+        <circle
+          r={isAggregated ? 3 : 2}
+          fill={edgeStyle.color}
+          opacity={0.85}
+          className="filter drop-shadow-[0_0_4px_currentColor] pointer-events-none"
+          dangerouslySetInnerHTML={{
+            __html: `<animateMotion dur="${isAggregated ? '1.8s' : '2.5s'}" repeatCount="indefinite" path="${path}" />`,
           }}
-          className={`nodrag nopan transition-opacity ${
-            isAggregated ? 'opacity-90 hover:opacity-100' : 'opacity-0 hover:opacity-100'
-          }`}
-        >
-          <div className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
-            {edgeType.replace(/_/g, ' ')}
-            {isAggregated && (
-              <span className="ml-1 font-bold text-primary">({count})</span>
-            )}
-          </div>
-        </div>
-      </EdgeLabelRenderer>
+        />
+      )}
+
+      {/* Interactive Tooltip & Context Label */}
+      {typeof document === 'undefined' ? (
+        <EdgeTooltip
+          id={id}
+          edgeType={edgeType}
+          count={count}
+          isHighlighted={isHighlighted}
+          isDimmed={isDimmed}
+          sourceName={sourceName}
+          targetName={targetName}
+          edgeColor={edgeStyle.color}
+          labelX={labelX}
+          labelY={labelY}
+        />
+      ) : (
+        <EdgeLabelRenderer>
+          <EdgeTooltip
+            id={id}
+            edgeType={edgeType}
+            count={count}
+            isHighlighted={isHighlighted}
+            isDimmed={isDimmed}
+            sourceName={sourceName}
+            targetName={targetName}
+            edgeColor={edgeStyle.color}
+            labelX={labelX}
+            labelY={labelY}
+          />
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 }
 
-export const FlowEdge = memo(BaseEdge);
+export const BaseEdge = memo(BaseEdgeInner);
+export const FlowEdge = BaseEdge;
