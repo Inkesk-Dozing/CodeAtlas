@@ -83,6 +83,7 @@ function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
   const pulsingNodeId = useGraphStore((s) => s.pulsingNodeId);
   const selectedId = useGraphStore((s) => s.selectedNodeId);
   const highlighted = useGraphStore((s) => s.highlightedNodeIds);
+  const mappedNodeIds = useGraphStore((s) => s.mappedNodeIds);
 
   const { zoomIn, zoomOut, fitView, setCenter } = useReactFlow();
 
@@ -229,13 +230,15 @@ function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
 
         const isSelected = n.id === selectedId;
         const isHighlighted = highlighted.has(n.id);
+        const isMapped = mappedNodeIds.has(n.id);
         const isPulsing = n.id === pulsingNodeId;
-        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted/pulsing
+        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted/mapped/pulsing
         const isVirtualProxy =
           activeVisibleNodeIds !== null &&
           !activeVisibleNodeIds.has(n.id) &&
           !isSelected &&
           !isHighlighted &&
+          !isMapped &&
           !isPulsing;
 
         return {
@@ -244,12 +247,13 @@ function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
             ...n.data,
             isSelected,
             isHighlighted,
+            isMapped,
             isVirtualProxy,
             isPulsing,
           },
         };
       }),
-    [nodes, selectedId, highlighted, pulsingNodeId, activeVisibleNodeIds, toggleCluster],
+    [nodes, selectedId, highlighted, mappedNodeIds, pulsingNodeId, activeVisibleNodeIds, toggleCluster],
   );
 
   // Camera Centering on a Target Node with Smooth Zoom/Pan Animation
@@ -344,14 +348,23 @@ function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
     return map;
   }, [rawNodes]);
 
-  const hasActiveSelection = Boolean(selectedId) || highlighted.size > 0 || Boolean(selectedEdgeId);
+  const hasActiveSelection =
+    Boolean(selectedId) ||
+    highlighted.size > 0 ||
+    mappedNodeIds.size > 0 ||
+    Boolean(selectedEdgeId);
 
   const displayEdges = useMemo(
     () =>
       edges.map((e) => {
         let isConnected = false;
+        let isMappedEdge = false;
+
         if (selectedEdgeId) {
           isConnected = e.id === selectedEdgeId;
+        } else if (mappedNodeIds.size > 0) {
+          isMappedEdge = mappedNodeIds.has(e.source) || mappedNodeIds.has(e.target);
+          isConnected = isMappedEdge;
         } else if (selectedId) {
           isConnected = e.source === selectedId || e.target === selectedId;
         } else if (highlighted.size > 0) {
@@ -370,12 +383,22 @@ function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
             isThrottled: isEdgeThrottled,
             isDimmed,
             isHighlighted,
+            isMapped: isMappedEdge,
             sourceName: sourceNode?.name || e.source,
             targetName: targetNode?.name || e.target,
           },
         };
       }),
-    [edges, isEdgeThrottled, selectedId, highlighted, selectedEdgeId, hasActiveSelection, nodeMap],
+    [
+      edges,
+      isEdgeThrottled,
+      selectedId,
+      highlighted,
+      mappedNodeIds,
+      selectedEdgeId,
+      hasActiveSelection,
+      nodeMap,
+    ],
   );
 
   if (isLoading) {

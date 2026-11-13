@@ -48,6 +48,20 @@ export interface IssueMappingStatus {
   generated_at: string | null;
 }
 
+export interface IssueResponse {
+  id: string;
+  repo_id: string;
+  number: number;
+  title: string;
+  body: string | null;
+  state: string;
+  labels: string[];
+  assignees: string[];
+  author: string | null;
+  url: string | null;
+  closed_at: string | null;
+}
+
 export function setAccessToken(token: string | null) {
   accessToken = token;
   if (token) {

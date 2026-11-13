@@ -19,7 +19,7 @@ function extractReturnType(signature?: string): string | null {
 }
 
 function FunctionNodeInner({ data }: NodeProps) {
-  const { node, isSelected, isHighlighted, isVirtualProxy, isPulsing, onSelect } =
+  const { node, isSelected, isHighlighted, isMapped, isVirtualProxy, isPulsing, onSelect } =
     data as unknown as BaseNodeData;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -60,9 +60,11 @@ function FunctionNodeInner({ data }: NodeProps) {
 
   const glowClass = isSelected
     ? 'border-primary shadow-[0_0_16px_rgba(14,165,233,0.7)] ring-2 ring-primary ring-offset-2 ring-offset-background'
-    : isHighlighted
-      ? 'border-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.7)] ring-2 ring-amber-400 ring-offset-1 ring-offset-background'
-      : 'border-border/60 hover:border-cyan-400/90 hover:shadow-[0_0_14px_rgba(6,182,212,0.45)]';
+    : isMapped
+      ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.85)] ring-2 ring-emerald-400 ring-offset-1 ring-offset-background'
+      : isHighlighted
+        ? 'border-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.7)] ring-2 ring-amber-400 ring-offset-1 ring-offset-background'
+        : 'border-border/60 hover:border-cyan-400/90 hover:shadow-[0_0_14px_rgba(6,182,212,0.45)]';
 
   const pulseClass = isPulsing
     ? 'animate-pulse ring-4 ring-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.9)] scale-[1.03]'
