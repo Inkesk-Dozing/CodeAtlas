@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ['--fix', '--config=apps/api/pyproject.toml']
+      - id: ruff-format
+        args: ['--config=apps/api/pyproject.toml']
+
+  - repo: local
+    hooks:
+      - id: conventional-commit
+        name: Check Conventional Commits
+        entry: bash -c 'git log -1 --pretty=%B | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?: .+"'
+        language: system
+        stages: [commit-msg]
+
+      - id: web-lint
+        name: Next.js ESLint
+        entry: pnpm --filter @codeatlas/web lint
+        language: system
+        files: ^apps/web/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: web-typecheck
+        name: Next.js Typecheck
+        entry: pnpm --filter @codeatlas/web typecheck
+        language: system
+        files: ^apps/web/.*\.(ts|tsx)$
+        pass_filenames: false
