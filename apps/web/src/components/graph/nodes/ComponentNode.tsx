@@ -9,7 +9,7 @@ import { useUIStore } from '@/stores/uiStore';
 import type { BaseNodeData } from './types';
 
 function ComponentNodeInner({ data }: NodeProps) {
-  const { node, isSelected, isHighlighted, isVirtualProxy, onSelect } =
+  const { node, isSelected, isHighlighted, isVirtualProxy, isPulsing, onSelect } =
     data as unknown as BaseNodeData;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -43,13 +43,17 @@ function ComponentNodeInner({ data }: NodeProps) {
       ? 'border-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.7)] ring-2 ring-amber-400 ring-offset-1 ring-offset-background'
       : 'border-border/60 hover:border-cyan-400/90 hover:shadow-[0_0_14px_rgba(6,182,212,0.45)]';
 
+  const pulseClass = isPulsing
+    ? 'animate-pulse ring-4 ring-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.9)] scale-[1.03]'
+    : '';
+
   return (
     <div
       onClick={handleClick}
       className={`
         group relative w-[260px] rounded-lg border bg-card/95 p-3 shadow-sm
         transition-all duration-200 cursor-pointer select-none backdrop-blur-sm
-        ${glowClass}
+        ${glowClass} ${pulseClass}
       `}
       title={node.name}
       data-testid={`component-node-${node.id}`}
