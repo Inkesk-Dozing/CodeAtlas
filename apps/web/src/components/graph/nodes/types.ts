@@ -6,5 +6,6 @@ export interface BaseNodeData {
   isHighlighted?: boolean;
   isMapped?: boolean;
   isVirtualProxy?: boolean;
+  isPulsing?: boolean;
   onSelect?: (nodeId: string) => void;
 }

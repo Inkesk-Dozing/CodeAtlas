@@ -255,7 +255,14 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
                 return (
                   <div
                     key={m.node?.id || i}
-                    className="rounded-lg border border-border p-3 transition-colors hover:border-primary/40"
+                    onClick={() => {
+                      if (m.node?.id) {
+                        selectNode(m.node.id);
+                        useGraphStore.getState().setPulseNode(m.node.id);
+                        useUIStore.getState().openPanel('node-detail');
+                      }
+                    }}
+                    className="cursor-pointer rounded-lg border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40"
                     style={{ borderLeftColor: color, borderLeftWidth: 3 }}
                   >
                     <div className="flex items-center justify-between gap-2">

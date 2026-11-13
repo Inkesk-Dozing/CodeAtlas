@@ -10,7 +10,7 @@ import type { BaseNodeData } from './types';
 export type { BaseNodeData } from './types';
 
 function BaseNodeInner({ data }: NodeProps) {
-  const { node, isSelected, isHighlighted, isMapped, isVirtualProxy, onSelect } =
+  const { node, isSelected, isHighlighted, isMapped, isVirtualProxy, isPulsing, onSelect } =
     data as unknown as BaseNodeData;
   const color = NODE_TYPE_COLORS[node.type] || '#6B7280';
   const meta = node.metadata || {};
@@ -37,6 +37,10 @@ function BaseNodeInner({ data }: NodeProps) {
     );
   }
 
+  const pulseClass = isPulsing
+    ? 'animate-pulse ring-4 ring-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.9)] scale-[1.03]'
+    : '';
+
   const glowClass = isSelected
     ? 'border-primary shadow-[0_0_16px_rgba(14,165,233,0.7)] ring-2 ring-primary ring-offset-2 ring-offset-background'
     : isMapped
@@ -51,7 +55,7 @@ function BaseNodeInner({ data }: NodeProps) {
       className={`
         group relative w-[260px] rounded-lg border bg-card/95 p-3 shadow-sm
         transition-all duration-200 cursor-pointer select-none backdrop-blur-sm
-        ${glowClass}
+        ${glowClass} ${pulseClass}
       `}
       data-testid={`base-node-${node.id}`}
     >
