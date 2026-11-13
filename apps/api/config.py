@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -55,7 +56,42 @@ class Settings(BaseSettings):
     ingestion_retry_base_delay: int = 5
     ingestion_timeout_seconds: int = 600
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        if not v or not v.startswith(("postgresql://", "postgresql+asyncpg://")):
+            raise ValueError(
+                "DATABASE_URL must be a valid PostgreSQL connection URI (e.g. postgresql+asyncpg://...)"
+            )
+        return v
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, v: str) -> str:
+        if not v or not v.startswith(("redis://", "rediss://")):
+            raise ValueError("REDIS_URL must be a valid Redis connection URI (e.g. redis://...)")
+        return v
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.environment == "production":
+            insecure_jwt = not self.jwt_secret or self.jwt_secret == "change-me-to-a-long-random-string"
+            no_rsa_key = not self.jwt_private_key_path or not Path(self.jwt_private_key_path).exists()
+            if insecure_jwt and no_rsa_key:
+                raise ValueError(
+                    "Production requires a secure non-default JWT_SECRET or a valid JWT_PRIVATE_KEY_PATH"
+                )
+
+            if not self.github_webhook_secret or self.github_webhook_secret == "change-me-webhook-secret":
+                raise ValueError("Production requires a non-default GITHUB_WEBHOOK_SECRET")
+
+        return self
 
     @property
     def is_production(self) -> bool:
