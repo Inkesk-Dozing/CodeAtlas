@@ -38,5 +38,10 @@ known-first-party = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
-filterwarnings = ["ignore::DeprecationWarning"]
+addopts = "-q --tb=short"
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore:.*protected namespace.*:UserWarning",
+    "ignore:.*coroutine 'AsyncMockMixin.*:RuntimeWarning"
+]
