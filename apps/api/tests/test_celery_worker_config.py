@@ -26,5 +26,15 @@ def test_gc_collect_invoked_on_parse_stage():
     with patch("gc.collect", wraps=gc.collect) as mock_gc:
         # Simulate gc trigger after AST parsing
         import gc as gc_mod
+
         gc_mod.collect()
         assert mock_gc.call_count >= 1
+
+
+def test_celery_task_registration():
+    import tasks.ingestion_tasks  # noqa: F401
+    import tasks.mapping_tasks  # noqa: F401
+
+    registered_tasks = celery_app.tasks
+    assert "tasks.ingestion_tasks.ingest_repository_task" in registered_tasks
+    assert "tasks.mapping_tasks.map_issue" in registered_tasks

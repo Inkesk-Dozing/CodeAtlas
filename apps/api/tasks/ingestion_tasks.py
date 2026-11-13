@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import AsyncSessionLocal
 from models import IngestionError, IngestionTask, Repository
 from services.ingestion.broadcaster import progress_broadcaster
+from tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -499,3 +500,36 @@ async def run_incremental_pipeline(
 def _utcnow():
     from datetime import datetime
     return datetime.now(UTC)
+
+
+@celery_app.task(name="tasks.ingestion_tasks.ingest_repository_task", bind=True)
+def ingest_repository_task(
+    self,
+    task_id: str,
+    repo_id: str,
+    mode: str = "full",
+    branch: str | None = None,
+    commit_sha: str | None = None,
+    clone_url: str | None = None,
+) -> dict[str, Any]:
+    """Celery-distributed task for full repository ingestion pipeline."""
+    import asyncio
+
+    self.update_state(state="STARTED", meta={"step": "initializing", "progress": 0})
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(
+            run_ingestion_pipeline(
+                task_id=task_id,
+                repo_id=repo_id,
+                mode=mode,
+                branch=branch,
+                commit_sha=commit_sha,
+                clone_url=clone_url,
+            )
+        )
+        self.update_state(state="SUCCESS", meta={"step": "completed", "progress": 100})
+        return {"status": "completed", "task_id": task_id, "repo_id": repo_id}
+    except Exception as e:
+        self.update_state(state="FAILURE", meta={"step": "failed", "error": str(e)})
+        raise
