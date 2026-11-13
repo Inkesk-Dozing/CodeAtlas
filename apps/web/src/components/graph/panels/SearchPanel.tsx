@@ -55,6 +55,7 @@ export function SearchPanel({ repoId }: { repoId: string }) {
   const handleResultClick = useCallback(
     (nodeId: string) => {
       selectNode(nodeId);
+      useGraphStore.getState().setPulseNode(nodeId);
       useUIStore.getState().openPanel('node-detail');
     },
     [selectNode],

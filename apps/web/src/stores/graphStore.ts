@@ -59,6 +59,7 @@ interface GraphState {
   rawEdges: GraphEdge[];
   selectedNodeId: string | null;
   highlightedNodeIds: Set<string>;
+  pulsingNodeId: string | null;
   searchQuery: string;
   filterTypes: Set<string>;
   isLoading: boolean;
@@ -69,6 +70,7 @@ interface GraphState {
 
   setGraph: (nodes: GraphNode[], edges: GraphEdge[], total?: number) => void;
   selectNode: (id: string | null) => void;
+  setPulseNode: (id: string | null) => void;
   addHighlight: (ids: string[]) => void;
   clearHighlight: () => void;
   setSearchQuery: (q: string) => void;
@@ -86,6 +88,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   rawEdges: [],
   selectedNodeId: null,
   highlightedNodeIds: new Set(),
+  pulsingNodeId: null,
   searchQuery: '',
   filterTypes: new Set(),
   isLoading: false,
@@ -107,6 +110,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   selectNode: (id) => set({ selectedNodeId: id }),
+
+  setPulseNode: (id) => set({ pulsingNodeId: id }),
 
   addHighlight: (ids) =>
     set((state) => ({

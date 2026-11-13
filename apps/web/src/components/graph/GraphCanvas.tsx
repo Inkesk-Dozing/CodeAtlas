@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   ReactFlow,
+  ReactFlowProvider,
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
   type Edge,
   type EdgeChange,
   type Node,
@@ -27,6 +28,7 @@ import {
   RouteNode,
 } from './nodes';
 import { customEdgeTypes } from './edges';
+import { CanvasControls } from './CanvasControls';
 import { useGraphStore, getVisibleNodes } from '@/stores/graphStore';
 import type { GraphEdge, GraphNode } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -69,7 +71,7 @@ interface GraphCanvasProps {
   onNodeClick?: (nodeId: string) => void;
 }
 
-export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
+function GraphCanvasInner({ onNodeClick }: GraphCanvasProps) {
   const rawNodes = useGraphStore((s) => s.rawNodes);
   const rawEdges = useGraphStore((s) => s.rawEdges);
   const filterTypes = useGraphStore((s) => s.filterTypes);
@@ -78,6 +80,15 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   const stage = useGraphStore((s) => s.stage);
   const progress = useGraphStore((s) => s.progress);
   const layoutOrientation = useGraphStore((s) => s.layoutOrientation);
+  const pulsingNodeId = useGraphStore((s) => s.pulsingNodeId);
+  const selectedId = useGraphStore((s) => s.selectedNodeId);
+  const highlighted = useGraphStore((s) => s.highlightedNodeIds);
+
+  const { zoomIn, zoomOut, fitView, setCenter } = useReactFlow();
+
+  const [isLocked, setIsLocked] = useState(false);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
 
@@ -147,9 +158,6 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
     },
     [onEdgesChange],
   );
-
-  const selectedId = useGraphStore((s) => s.selectedNodeId);
-  const highlighted = useGraphStore((s) => s.highlightedNodeIds);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
@@ -221,12 +229,14 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
 
         const isSelected = n.id === selectedId;
         const isHighlighted = highlighted.has(n.id);
-        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted
+        const isPulsing = n.id === pulsingNodeId;
+        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted/pulsing
         const isVirtualProxy =
           activeVisibleNodeIds !== null &&
           !activeVisibleNodeIds.has(n.id) &&
           !isSelected &&
-          !isHighlighted;
+          !isHighlighted &&
+          !isPulsing;
 
         return {
           ...n,
@@ -235,11 +245,96 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
             isSelected,
             isHighlighted,
             isVirtualProxy,
+            isPulsing,
           },
         };
       }),
-    [nodes, selectedId, highlighted, activeVisibleNodeIds, toggleCluster],
+    [nodes, selectedId, highlighted, pulsingNodeId, activeVisibleNodeIds, toggleCluster],
   );
+
+  // Camera Centering on a Target Node with Smooth Zoom/Pan Animation
+  const centerOnNode = useCallback(
+    (nodeId: string, options: { duration?: number; zoom?: number } = {}) => {
+      const { duration = 800, zoom = 1.2 } = options;
+      const targetNode = nodes.find((n) => n.id === nodeId);
+      if (!targetNode) return;
+
+      const nodeWidth = targetNode.width ?? 260;
+      const nodeHeight = targetNode.height ?? 80;
+      const centerX = targetNode.position.x + nodeWidth / 2;
+      const centerY = targetNode.position.y + nodeHeight / 2;
+
+      setCenter(centerX, centerY, { duration, zoom });
+    },
+    [nodes, setCenter],
+  );
+
+  // Trigger camera centering and pulsing when pulsingNodeId changes
+  useEffect(() => {
+    if (!pulsingNodeId) return;
+
+    centerOnNode(pulsingNodeId, { duration: 800, zoom: 1.2 });
+
+    const timer = setTimeout(() => {
+      useGraphStore.getState().setPulseNode(null);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [pulsingNodeId, centerOnNode]);
+
+  // Keyboard Navigation Shortcuts: Space (pan), F (focus), Esc (clear selection)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl instanceof HTMLInputElement ||
+        activeEl instanceof HTMLTextAreaElement ||
+        (activeEl as HTMLElement)?.isContentEditable;
+
+      if (isInput) return;
+
+      if (e.code === 'Space' && !e.repeat) {
+        setIsSpacePressed(true);
+      } else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        const currentSelected = useGraphStore.getState().selectedNodeId;
+        if (currentSelected) {
+          centerOnNode(currentSelected, { duration: 800, zoom: 1.2 });
+          useGraphStore.getState().setPulseNode(currentSelected);
+        } else {
+          // If no node selected, fit view
+          fitView({ padding: 50 / Math.max(containerDimensions.height || 600, 100), duration: 600 });
+        }
+      } else if (e.key === 'Escape') {
+        useGraphStore.getState().selectNode(null);
+        useGraphStore.getState().setPulseNode(null);
+        setSelectedEdgeId(null);
+        useUIStore.getState().closePanel();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [centerOnNode, fitView, containerDimensions]);
+
+  const handleZoomIn = useCallback(() => zoomIn({ duration: 300 }), [zoomIn]);
+  const handleZoomOut = useCallback(() => zoomOut({ duration: 300 }), [zoomOut]);
+  const handleFitView = useCallback(() => {
+    // Zoom to fit frames all active nodes with comfortable 50px padding
+    fitView({ padding: 50 / Math.max(containerDimensions.height || 600, 100), duration: 600 });
+  }, [fitView, containerDimensions]);
+  const handleToggleLock = useCallback(() => setIsLocked((prev) => !prev), []);
+  const handleToggleMinimap = useCallback(() => setShowMinimap((prev) => !prev), []);
 
   const nodeMap = useMemo(() => {
     const map = new Map<string, GraphNode>();
@@ -318,7 +413,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
   }
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full">
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}
@@ -336,23 +431,50 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
         maxZoom={2}
         defaultEdgeOptions={{ type: 'base' }}
         proOptions={{ hideAttribution: false }}
-        nodesDraggable
+        nodesDraggable={!isLocked}
         nodesConnectable={false}
-        elementsSelectable
+        elementsSelectable={!isLocked}
+        panOnDrag={!isLocked || isSpacePressed}
+        zoomOnScroll={!isLocked}
+        zoomOnPinch={!isLocked}
         zoomOnDoubleClick={false}
       >
         <ViewportInterceptor onViewportChange={handleViewportChange} />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
-        <Controls showInteractive={false} />
-        <MiniMap
-          nodeColor={(n) => {
-            const type = (n.data as { node?: GraphNode }).node?.type;
-            return (type ? NODE_TYPE_COLORS[type] : undefined) || '#6B7280';
-          }}
-          maskColor="hsl(var(--muted) / 0.5)"
-          style={{ width: 180, height: 120 }}
-        />
+        {showMinimap && (
+          <MiniMap
+            position="bottom-right"
+            nodeColor={(n) => {
+              const type = (n.data as { node?: GraphNode }).node?.type;
+              return (type ? NODE_TYPE_COLORS[type] : undefined) || '#6B7280';
+            }}
+            nodeStrokeColor="#0EA5E9"
+            nodeBorderRadius={4}
+            maskColor="hsl(var(--muted) / 0.6)"
+            className="!m-6 !rounded-xl !border !border-border/80 !bg-card/90 !shadow-xl !backdrop-blur-md"
+            style={{ width: 200, height: 130 }}
+          />
+        )}
       </ReactFlow>
+
+      {/* Floating Control Toolbar */}
+      <CanvasControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFitView={handleFitView}
+        isLocked={isLocked}
+        onToggleLock={handleToggleLock}
+        showMinimap={showMinimap}
+        onToggleMinimap={handleToggleMinimap}
+      />
     </div>
+  );
+}
+
+export function GraphCanvas(props: GraphCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <GraphCanvasInner {...props} />
+    </ReactFlowProvider>
   );
 }
