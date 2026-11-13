@@ -62,6 +62,26 @@ export interface IssueResponse {
   closed_at: string | null;
 }
 
+export interface IngestionStatusResponse {
+  id: string;
+  repo_id: string;
+  mode: string;
+  status: string;
+  current_stage?: string | null;
+  progress: number;
+  branch?: string | null;
+  commit_sha?: string | null;
+  files_total: number;
+  files_processed: number;
+  nodes_created: number;
+  edges_created: number;
+  error?: string | null;
+  stage_timings?: Record<string, unknown>;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+}
+
 export function setAccessToken(token: string | null) {
   accessToken = token;
   if (token) {
