@@ -125,6 +125,7 @@ export interface CustomEdgeData {
   isAggregated?: boolean;
   isDimmed?: boolean;
   isHighlighted?: boolean;
+  isMapped?: boolean;
   count?: number;
   sourceName?: string;
   targetName?: string;

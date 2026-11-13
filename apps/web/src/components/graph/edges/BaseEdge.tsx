@@ -139,19 +139,24 @@ export function BaseEdgeInner({
   const isAggregated = Boolean(edgeData.isAggregated);
   const isDimmed = Boolean(edgeData.isDimmed);
   const isHighlighted = Boolean(edgeData.isHighlighted);
+  const isMapped = Boolean(edgeData.isMapped);
   const count = typeof edgeData.count === 'number' ? edgeData.count : 1;
   const edgeStyle = getEdgeStyle(edgeType);
 
   const sourceName = edgeData.sourceName || 'Source';
   const targetName = edgeData.targetName || 'Target';
 
-  // Opacity & styling based on dimming / highlighting
-  const opacity = isDimmed ? 0.15 : isHighlighted ? 1.0 : 0.75;
-  const strokeWidth = isHighlighted
-    ? edgeStyle.width + 1.5
-    : isAggregated
-      ? Math.min(edgeStyle.width + 1.2, 4)
-      : edgeStyle.width;
+  const edgeColor = isMapped ? '#10B981' : edgeStyle.color;
+
+  // Opacity & styling based on dimming / highlighting / mapping
+  const opacity = isDimmed ? 0.15 : isMapped || isHighlighted ? 1.0 : 0.75;
+  const strokeWidth = isMapped
+    ? edgeStyle.width + 2
+    : isHighlighted
+      ? edgeStyle.width + 1.5
+      : isAggregated
+        ? Math.min(edgeStyle.width + 1.2, 4)
+        : edgeStyle.width;
 
   // When throttled at zoom < 0.3, render a fast straight line without bezier calculations or label DOM
   if (isThrottled) {
@@ -162,7 +167,7 @@ export function BaseEdgeInner({
         y1={sourceY}
         x2={targetX}
         y2={targetY}
-        stroke={edgeStyle.color}
+        stroke={edgeColor}
         strokeWidth={strokeWidth}
         opacity={opacity}
         style={style}
@@ -186,8 +191,8 @@ export function BaseEdgeInner({
       ? getSmoothStepPath({ ...pathParams, borderRadius: 8 })
       : getBezierPath({ ...pathParams, curvature: edgeType === 'renders' ? 0.35 : 0.25 });
 
-  const markerId = `arrow-${edgeType}-${id}`;
-  const showParticles = edgeStyle.hasParticles || isHighlighted;
+  const markerId = `arrow-${edgeType}-${id}${isMapped ? '-mapped' : ''}`;
+  const showParticles = edgeStyle.hasParticles || isHighlighted || isMapped;
 
   return (
     <>
@@ -204,7 +209,7 @@ export function BaseEdgeInner({
           >
             <path
               d="M 0 1.5 L 10 5 L 0 8.5 z"
-              fill={edgeStyle.color}
+              fill={edgeColor}
               opacity={opacity}
             />
           </marker>
@@ -215,13 +220,17 @@ export function BaseEdgeInner({
       <path
         id={id}
         d={path}
-        stroke={edgeStyle.color}
+        stroke={edgeColor}
         strokeWidth={strokeWidth}
         strokeDasharray={edgeStyle.dash !== 'none' ? edgeStyle.dash : undefined}
         markerEnd={`url(#${markerId})`}
         opacity={opacity}
         className={`transition-all duration-150 ${
-          isHighlighted ? 'filter drop-shadow-[0_0_5px_currentColor]' : ''
+          isMapped
+            ? 'filter drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]'
+            : isHighlighted
+              ? 'filter drop-shadow-[0_0_5px_currentColor]'
+              : ''
         }`}
         style={style}
         data-testid={`edge-path-${id}`}
@@ -231,7 +240,7 @@ export function BaseEdgeInner({
       {showParticles && !isDimmed && (
         <circle
           r={isAggregated ? 3 : 2}
-          fill={edgeStyle.color}
+          fill={edgeColor}
           opacity={0.85}
           className="filter drop-shadow-[0_0_4px_currentColor] pointer-events-none"
           dangerouslySetInnerHTML={{

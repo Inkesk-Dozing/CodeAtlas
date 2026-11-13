@@ -1,15 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api/client';
+import { api, type CodeMapping, type IssueResponse } from '@/lib/api/client';
 import { useGraphStore } from '@/stores/graphStore';
 import { useUIStore } from '@/stores/uiStore';
+import { IssueDetailDrawer } from './IssueDetailDrawer';
 
 interface IssueSummary {
+  id: string;
   number: number;
   title: string;
   labels: string[];
   state: string;
+  author?: string | null;
+  url?: string | null;
 }
 
 interface MappingEntry {
@@ -39,15 +43,16 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
   const [issues, setIssues] = useState<IssueSummary[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<number | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<IssueSummary | null>(null);
   const [mapping, setMapping] = useState<MappingResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const closePanel = useUIStore((s) => s.closePanel);
-  const addHighlight = useGraphStore((s) => s.addHighlight);
   const clearHighlight = useGraphStore((s) => s.clearHighlight);
   const selectNode = useGraphStore((s) => s.selectNode);
+  const setMappedNodes = useGraphStore((s) => s.setMappedNodes);
+  const clearMappedNodes = useGraphStore((s) => s.clearMappedNodes);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -63,7 +68,7 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
     api.issues
       .list(repoId)
       .then((data) => {
-        if (!cancelled) setIssues((data as IssueSummary[]) || []);
+        if (!cancelled) setIssues((data as unknown as IssueSummary[]) || []);
       })
       .catch((err) => {
         if (!cancelled) setListError(err.message || 'Failed to load issues');
@@ -75,8 +80,9 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
       cancelled = true;
       stopPolling();
       clearHighlight();
+      clearMappedNodes();
     };
-  }, [repoId, stopPolling, clearHighlight]);
+  }, [repoId, stopPolling, clearHighlight, clearMappedNodes]);
 
   const applyMapping = useCallback(
     (result: MappingResult) => {
@@ -84,11 +90,11 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
       const nodeIds = (result.mappings || []).map((m) => m.node?.id).filter(Boolean) as string[];
       if (nodeIds.length > 0) {
         clearHighlight();
-        addHighlight(nodeIds);
+        setMappedNodes(nodeIds);
         selectNode(nodeIds[0]);
       }
     },
-    [addHighlight, clearHighlight, selectNode],
+    [setMappedNodes, clearHighlight, selectNode],
   );
 
   const pollMapping = useCallback(
@@ -124,16 +130,16 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
   );
 
   const handleIssueClick = useCallback(
-    async (issueNumber: number) => {
-      setSelectedIssue(issueNumber);
+    async (issue: IssueSummary) => {
+      setSelectedIssue(issue);
       setMapping(null);
       setAnalysisError(null);
       setIsAnalyzing(true);
 
       const startedAt = Date.now();
       try {
-        await api.issues.analyze(repoId, issueNumber);
-        pollMapping(issueNumber, startedAt);
+        await api.issues.analyze(repoId, issue.number);
+        pollMapping(issue.number, startedAt);
       } catch (err) {
         setIsAnalyzing(false);
         setAnalysisError(err instanceof Error ? err.message : 'Failed to start analysis');
@@ -141,6 +147,27 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
     },
     [repoId, pollMapping],
   );
+
+  if (selectedIssue) {
+    return (
+      <IssueDetailDrawer
+        repoId={repoId}
+        issue={selectedIssue as unknown as IssueResponse}
+        mappings={(mapping?.mappings || []) as unknown as CodeMapping[]}
+        isLoading={isAnalyzing}
+        onClose={() => {
+          setSelectedIssue(null);
+          setMapping(null);
+          clearHighlight();
+          clearMappedNodes();
+        }}
+        onCenterFile={(nodeId) => {
+          selectNode(nodeId);
+          setMappedNodes([nodeId]);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col border-l border-border bg-card">
@@ -172,11 +199,9 @@ export function IssueMappingPanel({ repoId }: { repoId: string }) {
           {issues.map((issue) => (
             <button
               key={issue.number}
-              onClick={() => handleIssueClick(issue.number)}
+              onClick={() => handleIssueClick(issue)}
               disabled={isAnalyzing}
-              className={`block w-full border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60 ${
-                selectedIssue === issue.number ? 'bg-primary/5' : ''
-              }`}
+              className="block w-full border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60"
             >
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">

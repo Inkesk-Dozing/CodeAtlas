@@ -59,6 +59,7 @@ interface GraphState {
   rawEdges: GraphEdge[];
   selectedNodeId: string | null;
   highlightedNodeIds: Set<string>;
+  mappedNodeIds: Set<string>;
   searchQuery: string;
   filterTypes: Set<string>;
   isLoading: boolean;
@@ -71,6 +72,8 @@ interface GraphState {
   selectNode: (id: string | null) => void;
   addHighlight: (ids: string[]) => void;
   clearHighlight: () => void;
+  setMappedNodes: (ids: string[]) => void;
+  clearMappedNodes: () => void;
   setSearchQuery: (q: string) => void;
   toggleFilterType: (type: string) => void;
   clearFilters: () => void;
@@ -86,6 +89,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   rawEdges: [],
   selectedNodeId: null,
   highlightedNodeIds: new Set(),
+  mappedNodeIds: new Set(),
   searchQuery: '',
   filterTypes: new Set(),
   isLoading: false,
@@ -114,6 +118,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     })),
 
   clearHighlight: () => set({ highlightedNodeIds: new Set() }),
+
+  setMappedNodes: (ids) => set({ mappedNodeIds: new Set(ids) }),
+
+  clearMappedNodes: () => set({ mappedNodeIds: new Set() }),
 
   setSearchQuery: (q) => set({ searchQuery: q }),
 

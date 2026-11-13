@@ -150,6 +150,7 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
 
   const selectedId = useGraphStore((s) => s.selectedNodeId);
   const highlighted = useGraphStore((s) => s.highlightedNodeIds);
+  const mappedNodeIds = useGraphStore((s) => s.mappedNodeIds);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
@@ -221,12 +222,14 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
 
         const isSelected = n.id === selectedId;
         const isHighlighted = highlighted.has(n.id);
-        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted
+        const isMapped = mappedNodeIds.has(n.id);
+        // Off-screen node unmounting: if virtualization active and node not in viewport/selected/highlighted/mapped
         const isVirtualProxy =
           activeVisibleNodeIds !== null &&
           !activeVisibleNodeIds.has(n.id) &&
           !isSelected &&
-          !isHighlighted;
+          !isHighlighted &&
+          !isMapped;
 
         return {
           ...n,
@@ -234,11 +237,12 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
             ...n.data,
             isSelected,
             isHighlighted,
+            isMapped,
             isVirtualProxy,
           },
         };
       }),
-    [nodes, selectedId, highlighted, activeVisibleNodeIds, toggleCluster],
+    [nodes, selectedId, highlighted, mappedNodeIds, activeVisibleNodeIds, toggleCluster],
   );
 
   const nodeMap = useMemo(() => {
@@ -249,14 +253,23 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
     return map;
   }, [rawNodes]);
 
-  const hasActiveSelection = Boolean(selectedId) || highlighted.size > 0 || Boolean(selectedEdgeId);
+  const hasActiveSelection =
+    Boolean(selectedId) ||
+    highlighted.size > 0 ||
+    mappedNodeIds.size > 0 ||
+    Boolean(selectedEdgeId);
 
   const displayEdges = useMemo(
     () =>
       edges.map((e) => {
         let isConnected = false;
+        let isMappedEdge = false;
+
         if (selectedEdgeId) {
           isConnected = e.id === selectedEdgeId;
+        } else if (mappedNodeIds.size > 0) {
+          isMappedEdge = mappedNodeIds.has(e.source) || mappedNodeIds.has(e.target);
+          isConnected = isMappedEdge;
         } else if (selectedId) {
           isConnected = e.source === selectedId || e.target === selectedId;
         } else if (highlighted.size > 0) {
@@ -275,12 +288,22 @@ export function GraphCanvas({ onNodeClick }: GraphCanvasProps) {
             isThrottled: isEdgeThrottled,
             isDimmed,
             isHighlighted,
+            isMapped: isMappedEdge,
             sourceName: sourceNode?.name || e.source,
             targetName: targetNode?.name || e.target,
           },
         };
       }),
-    [edges, isEdgeThrottled, selectedId, highlighted, selectedEdgeId, hasActiveSelection, nodeMap],
+    [
+      edges,
+      isEdgeThrottled,
+      selectedId,
+      highlighted,
+      mappedNodeIds,
+      selectedEdgeId,
+      hasActiveSelection,
+      nodeMap,
+    ],
   );
 
   if (isLoading) {
