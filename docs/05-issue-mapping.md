@@ -5,28 +5,16 @@ Maps GitHub Issues to relevant code nodes using semantic similarity, structural 
 
 ## Pipeline Architecture
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  GitHub      │────▶│  Issue Analyzer  │────▶│  Candidate      │
-│  Issue       │     │  (NLP + Heuristics)│   │  Generator      │
-└──────────────┘     └──────────────────┘     └────────┬────────┘
-                                                        │
-                        ┌──────────────────┐            │
-                        │  Ranker &        │◀───────────┘
-                        │  Confidence      │
-                        └────────┬─────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │  Graph           │
-                        │  Propagation     │
-                        └────────┬─────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │  Final Results   │
-                        │  (Top-K + Scores)│
-                        └──────────────────┘
+```mermaid
+flowchart TD
+    Issue[GitHub Issue<br/>Title, Body, Labels, Comments] --> Analyzer[Stage 1: Issue Analyzer<br/>NLP, Tokenizer, Entity & Path Extractor]
+    Analyzer --> CandidateGen[Stage 2: Candidate Generator<br/>HNSW Vector Query + Path Heuristics]
+    CandidateGen --> Ranker[Stage 3: 5-Signal Hybrid Ranker<br/>Semantic + Structural + Recency + Activity]
+    Ranker --> Propagator[Stage 4: Graph Propagation<br/>BFS / Degree / Multi-hop Edge Traversal]
+    Propagator --> Results[Stage 5: Final Ranked Results<br/>Top-K Code Nodes with Action Blueprints]
+
+    classDef proc fill:#1e293b,stroke:#0ea5e9,stroke-width:2px,color:#f8fafc;
+    class Issue,Analyzer,CandidateGen,Ranker,Propagator,Results proc;
 ```
 
 ## Stage 1: Issue Analysis
@@ -512,3 +500,14 @@ TEST_CASES = [
 - Run golden set on every PR
 - Alert if Precision@5 drops > 5%
 - Automated bisect to find regression commit
+
+---
+
+## Big-O Algorithmic Complexity
+
+| Operation | Time Complexity | Space Complexity | Description |
+|---|---|---|---|
+| Issue Text Parsing & Tokenization | $O(T)$ | $O(U)$ | Scans $T$ characters in issue body to extract $U$ unique candidate tokens |
+| Approximate Vector Neighbor Search | $O(\log N)$ | $O(k)$ | Hierarchical Navigable Small World (HNSW) cosine search over $N$ embeddings returning top-$k$ |
+| 5-Signal Rank Scoring | $O(k)$ | $O(k)$ | Computes composite linear combination across semantic, path, type, and recency signals |
+| Subgraph Topological Propagation | $O(V_{sub} + E_{sub})$ | $O(V_{sub})$ | Breadth-first decay expansion up to 2 hops across local dependency neighborhood |

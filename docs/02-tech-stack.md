@@ -2,31 +2,48 @@
 
 ## High-Level Architecture
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   GitHub App    │────▶│  Ingestion      │────▶│  Vector DB      │
-│   (OAuth/Webhooks)│   │  Pipeline       │   │  (pgvector)     │
-└─────────────────┘     └────────┬────────┘     └────────┬────────┘
-                                 │                       │
-                                 ▼                       ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │  Graph Builder  │     │  Embedding      │
-                        │  (AST/Dependency)│    │  Service        │
-                        └────────┬────────┘     └────────┬────────┘
-                                 │                       │
-                                 ▼                       ▼
-                        ┌─────────────────────────────────────────┐
-                        │           API Layer (FastAPI)           │
-                        │  • Graph Query  • Semantic Search       │
-                        │  • Issue Mapping • Summarization        │
-                        └─────────────────────┬───────────────────┘
-                                              │
-                                              ▼
-                        ┌─────────────────────────────────────────┐
-                        │        Frontend (Next.js + React Flow)  │
-                        │  • Interactive Graph  • Issue Viewer    │
-                        │  • Search UI  • Settings/Integrations   │
-                        └─────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Client [Frontend Workspace - Next.js 14]
+        WebUI[Next.js 14 App Router]
+        RF[React Flow Interactive Canvas]
+        ZustandStore[Zustand State Stores]
+        WebUI --> RF
+        WebUI --> ZustandStore
+    end
+
+    subgraph Gateway [API Gateway Layer - FastAPI]
+        API[FastAPI Gateway]
+        AuthRouter[Auth & GitHub OAuth]
+        GraphRouter[Graph & Layout Query]
+        IssueRouter[Issue Mapping Engine]
+        SearchRouter[Hybrid Vector Search]
+        HealthRouter[Liveness & Readiness Probes]
+        API --> AuthRouter
+        API --> GraphRouter
+        API --> IssueRouter
+        API --> SearchRouter
+        API --> HealthRouter
+    end
+
+    subgraph Ingestion [Asynchronous Pipeline & Background Workers]
+        CeleryWorker[Celery Distributed Workers]
+        ASTParser[Tree-sitter AST Parsers]
+        EmbedService[Sentence-Transformers / Ollama]
+        CeleryWorker --> ASTParser
+        CeleryWorker --> EmbedService
+    end
+
+    subgraph Storage [Persistence & Cache Infrastructure]
+        Postgres[(PostgreSQL 16 + pgvector)]
+        Redis[(Redis Queue & Cache)]
+    end
+
+    Client -->|REST / WebSocket| API
+    API --> Postgres
+    API --> Redis
+    Redis --> CeleryWorker
+    CeleryWorker --> Postgres
 ```
 
 ## Technology Choices
