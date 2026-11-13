@@ -41,7 +41,7 @@ pnpm dev
 
 CodeAtlas strictly enforces [Conventional Commits](https://www.conventionalcommits.org/). All commit messages must follow this structure:
 
-```
+```text
 <type>(<scope>): <short summary>
 
 [optional body]
@@ -58,6 +58,8 @@ CodeAtlas strictly enforces [Conventional Commits](https://www.conventionalcommi
 - `perf`: Performance improvements
 - `test`: Adding or updating unit/integration/E2E tests
 - `chore`: Maintenance, build scripts, configuration changes
+- `ci`: CI/CD workflows and automation scripts
+- `build`: Dependency and monorepo build configuration
 
 ### Examples
 - `feat(ingestion): add tree-sitter Python AST parser engine`
@@ -68,16 +70,17 @@ CodeAtlas strictly enforces [Conventional Commits](https://www.conventionalcommi
 
 ## Pull Request Process
 
-1. **Branch Naming**: Use the pattern `<type>/<issue-number>-<short-description>` (e.g., `feat/42-tree-sitter-parser` or `fix/108-jwt-expiry`).
+1. **Branch Naming**: Use the pattern `<type>/<issue-number>-<short-description>` or `<type>/issue-<number>-<short-description>` (e.g., `feat/issue-42-tree-sitter-parser` or `fix/issue-108-jwt-expiry`).
 2. **Issue Linking**: Every Pull Request must link to an existing GitHub issue using `Closes #<issue-id>` or `Fixes #<issue-id>`.
 3. **Linting & Formatting**: Ensure code adheres to Prettier, ESLint, and Ruff formatting rules before committing:
    ```bash
-   pnpm format:check
    pnpm lint
+   ruff check apps/api
    ```
 4. **Unit & Integration Testing**: All pull requests must pass unit and integration tests with zero regression:
    ```bash
    pnpm test
+   python apps/api/benchmark_mapping.py --threshold 0.75
    ```
 5. **Code Review Criteria**: Pull requests require at least one approving review from a core maintainer and green CI build checks.
 
@@ -85,7 +88,14 @@ CodeAtlas strictly enforces [Conventional Commits](https://www.conventionalcommi
 
 ## Pre-Commit Hooks & Quality Gates
 
-CodeAtlas utilizes pre-commit hooks to safeguard codebase integrity:
-- **Secret Scanning**: Scans for hardcoded credentials via TruffleHog.
-- **Code Linting & Formatting**: Enforces ESLint and Ruff compliance.
-- **Type checking**: Runs `pnpm typecheck` across monorepo packages.
+CodeAtlas utilizes pre-commit hooks (`.pre-commit-config.yaml`) to safeguard codebase integrity:
+- **Secret Scanning & Key Detection**: Scans for private keys, secrets, and large files.
+- **Python Quality Gate**: Automatically runs Ruff linting and formatting on `apps/api/`.
+- **Frontend Quality Gate**: Runs ESLint and TypeScript checks across Next.js and shared packages.
+- **Commit Linter**: Ensures commit messages conform to the Conventional Commits specification.
+
+To install pre-commit hooks locally:
+```bash
+pip install pre-commit
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+```

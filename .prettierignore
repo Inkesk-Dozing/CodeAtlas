@@ -1,0 +1,32 @@
+# Package manager & dependencies
+node_modules
+.pnpm-store
+
+# Build & cache outputs
+.next
+dist
+build
+.turbo
+.cache
+
+# Python artifacts & virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ruff_cache/
+.pytest_cache/
+apps/api/migrations/versions/
+
+# Git & OS artifacts
+.git
+.DS_Store
+Thumbs.db
+
+# Synthetic golden repo fixtures
+apps/api/tests/fixtures/
+apps/api/fixtures/
