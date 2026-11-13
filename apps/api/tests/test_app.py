@@ -48,12 +48,31 @@ class TestAppHealth:
         body = resp.json()
         assert "status" in body
         assert "checks" in body
+        assert "database" in body["checks"]
+        assert "redis" in body["checks"]
+        assert "ollama" in body["checks"]
 
     def test_health_shape(self):
         resp = self.client.get("/health")
         assert resp.status_code == 200
         body = resp.json()
-        assert set(body) >= {"status", "version", "checks", "timestamp"}
+        assert set(body) >= {"status", "version", "checks", "timestamp", "uptime_seconds"}
+        assert body["status"] == "healthy"
+        assert body["checks"] == {"api": "healthy"}
+        assert isinstance(body["uptime_seconds"], (int, float))
+
+    def test_ready_mock_failure(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        mock_engine = MagicMock()
+        mock_engine.connect.side_effect = Exception("Database unreachable")
+        monkeypatch.setattr("database.engine", mock_engine)
+
+        resp = self.client.get("/ready")
+        assert resp.status_code == 503
+        data = resp.json()
+        assert data["status"] == "not_ready"
+        assert "unhealthy" in data["checks"]["database"]
 
     def test_openapi_has_expected_paths(self):
         spec = main.app.openapi()

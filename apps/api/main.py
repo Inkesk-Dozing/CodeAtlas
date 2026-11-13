@@ -56,8 +56,13 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         return response
 
 
+_app_start_time = time.time()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _app_start_time
+    _app_start_time = time.time()
     logger.info("CodeAtlas API starting up (env=%s)", settings.environment)
     yield
     logger.info("CodeAtlas API shutting down")
@@ -102,41 +107,75 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health_check():
-    checks = {"api": "healthy"}
-
-    try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            resp = await client.get("http://localhost:8000/ready", timeout=2.0)
-            checks.update(resp.json().get("checks", {}))
-    except Exception:
-        pass
-
-    overall = "healthy" if all(v == "healthy" for v in checks.values()) else "degraded"
-
+    """Liveness probe: returns HTTP 200 with server status, uptime, and version without external calls."""
     from datetime import datetime
+
+    now = time.time()
+    uptime_seconds = round(now - _app_start_time, 3)
+
     return {
-        "status": overall,
+        "status": "healthy",
         "version": settings.version,
-        "checks": checks,
+        "uptime_seconds": uptime_seconds,
+        "checks": {"api": "healthy"},
         "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
 @app.get("/ready")
 async def readiness_check():
+    """Readiness probe: validates database, redis, and optional ollama connectivity."""
+    checks: dict[str, str] = {}
+    is_ready = True
+
+    # 1. Database check
     try:
         from sqlalchemy import text
 
         from database import engine
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        return {"status": "ready", "checks": {"database": "healthy"}}
+        checks["database"] = "healthy"
     except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "checks": {"database": str(e)}},
+        checks["database"] = f"unhealthy: {e}"
+        is_ready = False
+
+    # 2. Redis check
+    try:
+        import redis.asyncio as aioredis
+
+        redis_client = aioredis.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+            socket_timeout=1.0,
+            socket_connect_timeout=1.0,
         )
+        await redis_client.ping()
+        await redis_client.aclose()
+        checks["redis"] = "healthy"
+    except Exception as e:
+        checks["redis"] = f"unhealthy: {e}"
+        is_ready = False
+
+    # 3. Ollama check (dependency check)
+    try:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            resp = await client.get(f"{settings.ollama_url.rstrip('/')}/api/tags")
+            checks["ollama"] = "healthy" if resp.status_code == 200 else f"degraded: status {resp.status_code}"
+    except Exception:
+        checks["ollama"] = "unavailable"
+
+    status_code = status.HTTP_200_OK if is_ready else status.HTTP_503_SERVICE_UNAVAILABLE
+    response_status = "ready" if is_ready else "not_ready"
+
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": response_status, "checks": checks},
+    )
 
 
 @app.get("/metrics")
