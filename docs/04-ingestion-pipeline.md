@@ -5,19 +5,15 @@ The ingestion pipeline clones a repository, parses source code into an AST, extr
 
 ## Pipeline Stages
 
-```
-┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│   Clone     │──▶│   Parse     │──▶│  Extract    │──▶│  Embed      │──▶│  Persist    │
-│   (Shallow) │   │  (Tree-sitter)│  │  (Graph)    │   │  (Batch)    │   │  (Upsert)   │
-└─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘
-      │               │               │               │               │
-      ▼               ▼               ▼               ▼               ▼
-  - Sparse       - Multi-lang    - Nodes:        - 384-dim      - Upsert
-  - Shallow      - Incremental     files, dirs,    vectors        - HNSW
-  - Token auth   - Cache ASTs      classes, funcs,               index
-  - Progress     - Error tolerant  routes, comps               - Transaction
-                                            - Edges:
-                                              imports, calls
+```mermaid
+flowchart LR
+    S1[Stage 1: Clone<br/>Shallow / Sparse Checkout] --> S2[Stage 2: Parse<br/>Tree-sitter Multi-lang AST]
+    S2 --> S3[Stage 3: Extract<br/>Hierarchical Symbol & Edge Resolution]
+    S3 --> S4[Stage 4: Embed<br/>Batch Vectorization 384-dim]
+    S4 --> S5[Stage 5: Persist<br/>PostgreSQL Batch Upsert & HNSW Index]
+
+    classDef stage fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    class S1,S2,S3,S4,S5 stage;
 ```
 
 ## Stage 1: Clone
