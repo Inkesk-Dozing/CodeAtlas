@@ -145,7 +145,7 @@ export default function GraphPage() {
       {rightPanelOpen && activePanel === 'node-detail' && (
         <div className="w-96 shrink-0">
           <ErrorBoundary>
-            <NodeDetailPanel />
+            <NodeDetailPanel repoId={repoId} />
           </ErrorBoundary>
         </div>
       )}
