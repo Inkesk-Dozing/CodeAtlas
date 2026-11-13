@@ -1,15 +1,29 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Layers, Github } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
 
 function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams.get('redirect') || '/repos';
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace(redirectTarget);
+    }
+  }, [isLoading, isAuthenticated, router, redirectTarget]);
+
   const handleGitHubLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '';
     const redirectUri = `${window.location.origin}/api/auth/callback`;
     const state = Math.random().toString(36).slice(2);
 
     localStorage.setItem('oauth_state', state);
+    localStorage.setItem('auth_redirect', redirectTarget);
 
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user&state=${state}`;
 
@@ -33,6 +47,7 @@ function LoginContent() {
           <button
             onClick={handleGitHubLogin}
             className="flex w-full items-center justify-center gap-3 rounded-lg bg-[#24292f] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#24292f]/90"
+            data-testid="github-login-btn"
           >
             <Github className="h-5 w-5" />
             Continue with GitHub

@@ -62,21 +62,35 @@ export interface IssueResponse {
   closed_at: string | null;
 }
 
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
 export function setAccessToken(token: string | null) {
   accessToken = token;
-  if (token) {
-    localStorage.setItem('access_token', token);
-  } else {
-    localStorage.removeItem('access_token');
-  }
 }
 
 export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return accessToken;
-  if (!accessToken) {
-    accessToken = localStorage.getItem('access_token');
-  }
   return accessToken;
+}
+
+export interface RefreshHandler {
+  onRefresh: () => Promise<string | null>;
+  onUnauthorized: () => void;
+}
+
+let refreshHandler: RefreshHandler | null = null;
+
+export function registerRefreshHandler(handler: RefreshHandler) {
+  refreshHandler = handler;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -97,10 +111,53 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     signal: options.signal,
   });
 
-  if (res.status === 401) {
+  // Silent refresh interceptor on 401
+  if (res.status === 401 && !path.includes('/auth/refresh') && !path.includes('/auth/callback')) {
+    if (refreshHandler) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const newToken = await refreshHandler.onRefresh();
+          isRefreshing = false;
+          if (newToken) {
+            onTokenRefreshed(newToken);
+            // Retry original request with fresh token
+            return request<T>(path, {
+              ...options,
+              headers: {
+                ...(options.headers || {}),
+                Authorization: `Bearer ${newToken}`,
+              },
+            });
+          } else {
+            refreshHandler.onUnauthorized();
+          }
+        } catch {
+          isRefreshing = false;
+          refreshHandler.onUnauthorized();
+        }
+      } else {
+        // Queue pending requests while refresh is in-flight
+        return new Promise<T>((resolve, reject) => {
+          addRefreshSubscriber((newToken: string) => {
+            request<T>(path, {
+              ...options,
+              headers: {
+                ...(options.headers || {}),
+                Authorization: `Bearer ${newToken}`,
+              },
+            })
+              .then(resolve)
+              .catch(reject);
+          });
+        });
+      }
+    }
+
     setAccessToken(null);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      const current = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?redirect=${current}`;
     }
     throw new Error('Unauthorized');
   }

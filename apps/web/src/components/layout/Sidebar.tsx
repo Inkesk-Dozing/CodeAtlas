@@ -9,8 +9,11 @@ import {
   Settings,
   ChevronLeft,
   Layers,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 
 interface SidebarProps {
   repoId?: string;
@@ -20,6 +23,7 @@ interface SidebarProps {
 export function Sidebar({ repoId, repoName }: SidebarProps) {
   const pathname = usePathname();
   const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { user, logout } = useAuthStore();
 
   const navItems = repoId
     ? [
@@ -107,14 +111,40 @@ export function Sidebar({ repoId, repoName }: SidebarProps) {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-sidebar-border px-3 py-3">
+      <div className="border-t border-sidebar-border px-3 py-3 space-y-1">
         <Link
           href="/repos"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-white/5 hover:text-white transition-colors"
         >
           <Settings className="h-4 w-4" />
           All Repositories
         </Link>
+
+        {user && (
+          <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              {user.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatar_url}
+                  alt={user.username}
+                  className="h-5 w-5 rounded-full border border-border"
+                />
+              ) : (
+                <UserIcon className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="truncate font-medium text-sidebar-foreground">{user.username}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="text-sidebar-foreground/60 hover:text-rose-400 transition-colors p-1"
+              title="Sign out"
+              data-testid="logout-btn"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
